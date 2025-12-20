@@ -1,0 +1,95 @@
+const std = @import("std");
+const node_module = @import("../core/node.zig");
+const OperationType = node_module.OperationType;
+
+/// Compile-time parsed node information
+pub const ComptimeNode = struct {
+    id: []const u8,
+    operation: OperationType,
+    inputs: []const []const u8,
+    weights: []const f64,
+    constant_value: f64,
+    name: []const u8,
+    description: []const u8,
+};
+
+/// Parse JSON at compile time using manual parsing (no allocator needed!)
+/// This creates a fully static node array that lives in .rodata
+pub fn parseComptimeGraph(comptime json_str: []const u8) []const ComptimeNode {
+    // For now, we'll provide a manual way to define nodes at compile time
+    // A full JSON parser at comptime is possible but complex
+    // Users can define nodes directly or we can implement a simple parser
+
+    // This is a placeholder - in practice, you'd either:
+    // 1. Write a simple comptime JSON parser (no allocations)
+    // 2. Or use a build step to generate Zig code from JSON
+
+    _ = json_str;
+
+    @compileError(
+        \\
+        \\Full compile-time JSON parsing is not yet implemented.
+        \\
+        \\For now, please define your nodes manually using defineComptimeNodes():
+        \\
+        \\const PricingNodes = openpricing.defineComptimeNodes(&.{
+        \\    .{ .id = "base_price", .operation = .input, ... },
+        \\    .{ .id = "markup", .operation = .constant, .constant_value = 1.2, ... },
+        \\    .{ .id = "final_price", .operation = .multiply, .inputs = &.{"base_price", "markup"}, ... },
+        \\});
+        \\
+        \\Or use the runtime JSON parser (still very fast, parsed once at startup).
+    );
+}
+
+/// Helper function to define nodes at compile time manually
+pub fn defineComptimeNodes(comptime nodes: []const ComptimeNode) []const ComptimeNode {
+    return nodes;
+}
+
+fn parseOperation(comptime op_str: []const u8) OperationType {
+    const op_map = std.StaticStringMap(OperationType).initComptime(.{
+        .{ "add", .add },
+        .{ "subtract", .subtract },
+        .{ "multiply", .multiply },
+        .{ "divide", .divide },
+        .{ "power", .power },
+        .{ "modulo", .modulo },
+        .{ "negate", .negate },
+        .{ "abs", .abs },
+        .{ "sqrt", .sqrt },
+        .{ "exp", .exp },
+        .{ "log", .log },
+        .{ "sin", .sin },
+        .{ "cos", .cos },
+        .{ "weighted_sum", .weighted_sum },
+        .{ "max", .max },
+        .{ "min", .min },
+        .{ "clamp", .clamp },
+        .{ "input", .input },
+        .{ "constant", .constant },
+    });
+
+    return op_map.get(op_str) orelse @compileError("Unknown operation: " ++ op_str);
+}
+
+/// Find node index by ID at compile time
+pub fn getNodeIndex(comptime nodes: []const ComptimeNode, comptime id: []const u8) usize {
+    inline for (nodes, 0..) |node, i| {
+        if (std.mem.eql(u8, node.id, id)) {
+            return i;
+        }
+    }
+    @compileError("Node not found: " ++ id);
+}
+
+/// Perform topological sort at compile time
+pub fn computeExecutionOrder(comptime nodes: []const ComptimeNode) []const usize {
+    // Simple topological sort using node order (assumes they're already in valid order)
+    // For a more complex implementation, we'd need to compute dependencies
+    var order: []const usize = &.{};
+    inline for (0..nodes.len) |i| {
+        order = order ++ &[_]usize{i};
+    }
+    return order;
+}

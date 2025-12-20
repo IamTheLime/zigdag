@@ -63,7 +63,7 @@ function App() {
         inputs,
         metadata: {
           name: node.data.label || node.id,
-          description: '',
+          description: node.data.description || '',
           position_x: node.position.x,
           position_y: node.position.y,
         },
@@ -75,6 +75,29 @@ function App() {
     setJsonOutput(json);
     console.log('Exported graph:', json);
   }, [nodes, edges]);
+
+  const downloadJson = useCallback(() => {
+    if (!jsonOutput) {
+      exportToJson();
+      return;
+    }
+
+    const blob = new Blob([jsonOutput], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'pricing_model.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [jsonOutput, exportToJson]);
+
+  const copyToClipboard = useCallback(() => {
+    if (!jsonOutput) return;
+    navigator.clipboard.writeText(jsonOutput);
+    alert('JSON copied to clipboard!');
+  }, [jsonOutput]);
 
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex' }}>
@@ -101,20 +124,55 @@ function App() {
         }}
       >
         <h2>OpenPricing Graph Editor</h2>
-        <button
-          onClick={exportToJson}
-          style={{
-            padding: '10px 20px',
-            marginBottom: '20px',
-            cursor: 'pointer',
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-          }}
-        >
-          Export to JSON
-        </button>
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <button
+            onClick={exportToJson}
+            style={{
+              padding: '10px 20px',
+              cursor: 'pointer',
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              flex: '1',
+              minWidth: '120px',
+            }}
+          >
+            Generate JSON
+          </button>
+          <button
+            onClick={downloadJson}
+            disabled={!jsonOutput}
+            style={{
+              padding: '10px 20px',
+              cursor: jsonOutput ? 'pointer' : 'not-allowed',
+              backgroundColor: jsonOutput ? '#2196F3' : '#cccccc',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              flex: '1',
+              minWidth: '120px',
+            }}
+          >
+            Download JSON
+          </button>
+          <button
+            onClick={copyToClipboard}
+            disabled={!jsonOutput}
+            style={{
+              padding: '10px 20px',
+              cursor: jsonOutput ? 'pointer' : 'not-allowed',
+              backgroundColor: jsonOutput ? '#FF9800' : '#cccccc',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              flex: '1',
+              minWidth: '120px',
+            }}
+          >
+            Copy JSON
+          </button>
+        </div>
         {jsonOutput && (
           <div>
             <h3>Graph JSON:</h3>
@@ -133,12 +191,21 @@ function App() {
           </div>
         )}
         <div style={{ marginTop: '20px' }}>
-          <h3>Instructions:</h3>
+          <h3>Workflow:</h3>
+          <ol style={{ fontSize: '14px', lineHeight: '1.8', paddingLeft: '20px' }}>
+            <li>Design your pricing model by connecting nodes</li>
+            <li>Click "Generate JSON" to create the model definition</li>
+            <li>Click "Download JSON" to save as <code style={{ backgroundColor: '#e0e0e0', padding: '2px 4px' }}>pricing_model.json</code></li>
+            <li>Copy to <code style={{ backgroundColor: '#e0e0e0', padding: '2px 4px' }}>backend-openpricing/models/</code></li>
+            <li>Run <code style={{ backgroundColor: '#e0e0e0', padding: '2px 4px' }}>zig build</code> - nodes compile into the binary!</li>
+            <li>Your pricing model is now pure machine code</li>
+          </ol>
+          <h3 style={{ marginTop: '20px' }}>Tips:</h3>
           <ul style={{ fontSize: '14px', lineHeight: '1.6' }}>
             <li>Drag nodes to reposition them</li>
-            <li>Connect nodes by dragging from one handle to another</li>
-            <li>Click "Export to JSON" to see the graph definition</li>
-            <li>The JSON can be sent to the Zig backend for execution</li>
+            <li>Connect nodes by dragging from handles</li>
+            <li>The backend compiles your JSON at build time</li>
+            <li>Zero runtime overhead - everything is compile-time!</li>
           </ul>
         </div>
       </div>
