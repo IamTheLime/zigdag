@@ -23,9 +23,9 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    // Initialize executor - only allocates the input hash map, everything else is on the stack!
-    var executor = PricingExecutor.init(allocator);
-    defer executor.deinit();
+    // Initialize executor - everything is on the stack!
+    var executor = PricingExecutor.init();
+    _ = allocator; // No longer needed
 
     // Execute pricing calculation
     std.debug.print("\n", .{});
@@ -74,7 +74,7 @@ pub fn main() !void {
     // Execute - this is pure computation, fully inlined by the compiler!
     // Use the last node as output (typically the final result)
     const output_node = PricingNodes[PricingNodes.len - 1];
-    const result = try executor.execute(output_node.id);
+    const result = try executor.getOutput(output_node.id);
 
     std.debug.print("  {s}: ${d:.2}\n", .{ output_node.name, result });
     std.debug.print("\n", .{});

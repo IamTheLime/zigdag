@@ -19,13 +19,24 @@ const ComptimeNode = @import("comptime_parser.zig").ComptimeNode;
 /// - JSON remains source of truth for frontend
 /// - Compile-time validation of your JSON structure
 pub fn parseComptimeJSON(comptime json_content: []const u8) []const ComptimeNode {
-    // Use std.json.parseFromSliceLeaky which works at comptime
-    const parsed = std.json.parseFromSliceLeaky(
-        std.json.Value,
-        std.testing.allocator, // At comptime, this becomes a comptime allocator
-        json_content,
-        .{},
-    ) catch @compileError("Failed to parse JSON at compile-time. Check JSON syntax.");
+    // Parse JSON at comptime using std.json.parseFromSlice
+    // We use a comptime-friendly fixed buffer allocator
+    @setEvalBranchQuota(100000);
+
+    const parsed = comptime blk: {
+        var buffer: [1024 * 1024]u8 = undefined;
+        var fba = std.heap.FixedBufferAllocator.init(&buffer);
+        const allocator = fba.allocator();
+
+        const result = std.json.parseFromSlice(
+            std.json.Value,
+            allocator,
+            json_content,
+            .{},
+        ) catch @compileError("Failed to parse JSON at compile-time. Check JSON syntax.");
+
+        break :blk result.value;
+    };
 
     const root = parsed;
     const nodes_value = root.object.get("nodes") orelse @compileError("No 'nodes' field in JSON root object");
@@ -41,12 +52,12 @@ pub fn parseComptimeJSON(comptime json_content: []const u8) []const ComptimeNode
         const id = node_obj.get("id") orelse @compileError("Node missing 'id' field");
         const operation_str = node_obj.get("operation") orelse @compileError("Node missing 'operation' field");
 
-        const id_str = switch (id.*) {
+        const id_str = switch (id) {
             .string => |s| s,
             else => @compileError("Node 'id' must be a string"),
         };
 
-        const op_str = switch (operation_str.*) {
+        const op_str = switch (operation_str) {
             .string => |s| s,
             else => @compileError("Node 'operation' must be a string"),
         };
@@ -56,7 +67,7 @@ pub fn parseComptimeJSON(comptime json_content: []const u8) []const ComptimeNode
 
         // Extract optional constant_value
         const constant_value: f64 = if (node_obj.get("constant_value")) |cv|
-            switch (cv.*) {
+            switch (cv) {
                 .float => |f| f,
                 .integer => |int| @floatFromInt(int),
                 else => 0.0,
@@ -67,7 +78,7 @@ pub fn parseComptimeJSON(comptime json_content: []const u8) []const ComptimeNode
         // Extract inputs array
         comptime var inputs: []const []const u8 = &.{};
         if (node_obj.get("inputs")) |inputs_val| {
-            const inputs_arr = switch (inputs_val.*) {
+            const inputs_arr = switch (inputs_val) {
                 .array => |a| a,
                 else => @compileError("'inputs' must be an array"),
             };
@@ -84,7 +95,7 @@ pub fn parseComptimeJSON(comptime json_content: []const u8) []const ComptimeNode
         // Extract weights array
         comptime var weights: []const f64 = &.{};
         if (node_obj.get("weights")) |weights_val| {
-            const weights_arr = switch (weights_val.*) {
+            const weights_arr = switch (weights_val) {
                 .array => |a| a,
                 else => @compileError("'weights' must be an array"),
             };
@@ -104,20 +115,20 @@ pub fn parseComptimeJSON(comptime json_content: []const u8) []const ComptimeNode
         var description: []const u8 = "";
 
         if (node_obj.get("metadata")) |metadata_val| {
-            const metadata_obj = switch (metadata_val.*) {
+            const metadata_obj = switch (metadata_val) {
                 .object => |o| o,
                 else => @compileError("'metadata' must be an object"),
             };
 
             if (metadata_obj.get("name")) |name_val| {
-                name = switch (name_val.*) {
+                name = switch (name_val) {
                     .string => |s| s,
                     else => id_str,
                 };
             }
 
             if (metadata_obj.get("description")) |desc_val| {
-                description = switch (desc_val.*) {
+                description = switch (desc_val) {
                     .string => |s| s,
                     else => "",
                 };

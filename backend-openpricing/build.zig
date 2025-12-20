@@ -95,27 +95,29 @@ pub fn build(b: *std.Build) void {
     run_step.dependOn(&run_cmd.step);
 
     // ========================================================================
-    // Compile-Time JSON Example
+    // Compile-Time JSON Example (DISABLED - not possible in current Zig)
     // ========================================================================
-    const json_comptime_example = b.addExecutable(.{
-        .name = "json_comptime_example",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("examples/json_comptime_example.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "openpricing", .module = mod },
-            },
-        }),
-    });
+    // Note: True compile-time JSON parsing with allocations is not supported
+    // in Zig. Use the code generation approach instead (json_to_zig.zig).
+    // const json_comptime_example = b.addExecutable(.{
+    //     .name = "json_comptime_example",
+    //     .root_module = b.createModule(.{
+    //         .root_source_file = b.path("examples/json_comptime_example.zig"),
+    //         .target = target,
+    //         .optimize = optimize,
+    //         .imports = &.{
+    //             .{ .name = "openpricing", .module = mod },
+    //         },
+    //     }),
+    // });
 
-    b.installArtifact(json_comptime_example);
+    // b.installArtifact(json_comptime_example);
 
-    const run_json_comptime = b.addRunArtifact(json_comptime_example);
-    run_json_comptime.step.dependOn(b.getInstallStep());
+    // const run_json_comptime = b.addRunArtifact(json_comptime_example);
+    // run_json_comptime.step.dependOn(b.getInstallStep());
 
-    const run_json_comptime_step = b.step("run-json-comptime", "Run the compile-time JSON example");
-    run_json_comptime_step.dependOn(&run_json_comptime.step);
+    // const run_json_comptime_step = b.step("run-json-comptime", "Run the compile-time JSON example");
+    // run_json_comptime_step.dependOn(&run_json_comptime.step);
 
     // ========================================================================
     // Tests

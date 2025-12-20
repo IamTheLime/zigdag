@@ -59,6 +59,9 @@ pub const subscription_pricing = builder.comptimeModel(&.{
     builder.constant("free_calls", "Free API Calls", "1000 free calls included", 1000.0),
     builder.constant("free_storage", "Free Storage", "10 GB included", 10.0),
 
+    // Helper constant
+    builder.constant("zero", "Zero", "Zero constant", 0.0),
+
     // Calculate overage
     builder.subtract("excess_calls", "Excess Calls", "Calls beyond free tier", &.{ "api_calls", "free_calls" }),
     builder.subtract("excess_storage", "Excess Storage", "Storage beyond free tier", &.{ "storage_gb", "free_storage" }),
@@ -66,9 +69,6 @@ pub const subscription_pricing = builder.comptimeModel(&.{
     // Clamp to 0 (can't have negative usage)
     builder.max("billable_calls", "Billable Calls", "Calls to charge for", &.{ "excess_calls", "zero" }),
     builder.max("billable_storage", "Billable Storage", "Storage to charge for", &.{ "excess_storage", "zero" }),
-
-    // Helper constant
-    builder.constant("zero", "Zero", "Zero constant", 0.0),
 
     // Calculate usage charges
     builder.multiply("calls_charge", "API Calls Charge", "Cost for API calls", &.{ "billable_calls", "price_per_call" }),
@@ -102,8 +102,11 @@ pub const weighted_pricing = builder.comptimeModel(&.{
 pub const math_pricing = builder.comptimeModel(&.{
     builder.input("base_value", "Base Value", "Starting value"),
 
-    // Exponential growth
+    // Constants first
     builder.constant("growth_rate", "Growth Rate", "e^x growth", 1.5),
+    builder.constant("pi_over_6", "Pi/6", "30 degrees in radians", 0.5236),
+
+    // Exponential growth
     builder.power("exponential_value", "Exponential Value", "Base^growth", &.{ "base_value", "growth_rate" }),
 
     // Logarithmic dampening
@@ -111,7 +114,6 @@ pub const math_pricing = builder.comptimeModel(&.{
 
     // Trigonometric adjustment (for cyclical pricing)
     builder.multiply("scaled_input", "Scaled Input", "Scale for trig", &.{ "base_value", "pi_over_6" }),
-    builder.constant("pi_over_6", "Pi/6", "30 degrees in radians", 0.5236),
     builder.sin("sine_adjustment", "Sine Adjustment", "Cyclical component", &.{"scaled_input"}),
 
     // Combine
