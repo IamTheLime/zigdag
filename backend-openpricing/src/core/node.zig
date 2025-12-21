@@ -26,17 +26,100 @@ pub const OperationType = enum {
     clamp,
 
     // Input/constant nodes
-    input,
-    constant,
+    conditional_value_input,
+    constant_input_str,
+    constant_input_num,
+    dynamic_input_str,
+    dynamic_input_num,
+};
+
+pub const BinaryInputs = struct {
+    left_input_node_id: []const u8,
+    right_input_node_id: []const u8,
+};
+
+pub const UnaryInput = struct {
+    input_node_id: []const u8,
+};
+
+pub const VariadicInputs = struct {
+    node_input_ids: []const []const u8,
+};
+
+pub const WeightedInputs = struct {
+    node_input_ids: []const []const u8,
+    weights: []const f64,
+};
+
+pub const ClampInputs = struct {
+    value: []const u8,
+    min: []const u8,
+    max: []const u8,
+};
+
+pub const ConditionalValueInput = struct {
+    input_node: []const u8,
+    value_map: std.StringHashMap(f64), // Maps condition values to outputs
+};
+
+pub const ValueInputNum = struct {
+    // This is the only way that a user can
+    // provide an input to the system
+    user_value: ?f64,
+    allowed_values: []const f64,
+};
+pub const ValueInputStr = struct {
+    // This is the only way that a user can
+    // provide an input to the system
+    user_value: ?[]u8,
+    allowed_values: ?[]const f64,
+};
+
+pub const ConstantInputNum = struct {
+    // This Type of input is hardcoded in the graph
+    value: f64,
+};
+pub const ConstantInputStr = struct {
+    // This Type of input is hardcoded in the graph
+    value: []const u8,
+};
+
+pub const NodeOperation = union(OperationType) {
+    // Binary operations - 2 inputs
+    add: BinaryInputs,
+    subtract: BinaryInputs,
+    multiply: BinaryInputs,
+    divide: BinaryInputs,
+    power: BinaryInputs,
+    modulo: BinaryInputs,
+
+    // Unary operations - 1 input
+    negate: UnaryInput,
+    abs: UnaryInput,
+    sqrt: UnaryInput,
+    exp: UnaryInput,
+    log: UnaryInput,
+    sin: UnaryInput,
+    cos: UnaryInput,
+
+    // Special operations
+    weighted_sum: WeightedInputs,
+    max: VariadicInputs,
+    min: VariadicInputs,
+    clamp: ClampInputs,
+
+    // Input/constant nodes
+    conditional_value_input: ConditionalValueInput,
+    constant_input_str: ConstantInputStr,
+    constant_input_num: ConstantInputNum,
+    dynamic_input_str: ValueInputStr,
+    dynamic_input_num: ValueInputNum,
 };
 
 /// A pricing node in the computational graph
 pub const PricingNode = struct {
-    id: []const u8,
-    operation: OperationType,
-    weights: []const f64, // For weighted operations
-    constant_value: f64, // For constant nodes
-    inputs: []const []const u8, // IDs of input nodes
+    node_id: []const u8,
+    operation: NodeOperation,
     metadata: NodeMetadata,
 
     pub const NodeMetadata = struct {
@@ -49,14 +132,11 @@ pub const PricingNode = struct {
     pub fn init(
         allocator: std.mem.Allocator,
         id: []const u8,
-        operation: OperationType,
+        operation: NodeOperation,
     ) !PricingNode {
         return PricingNode{
-            .id = try allocator.dupe(u8, id),
+            .node_id = try allocator.dupe(u8, id),
             .operation = operation,
-            .weights = &[_]f64{},
-            .constant_value = 0.0,
-            .inputs = &[_][]const u8{},
             .metadata = .{
                 .name = try allocator.dupe(u8, id),
                 .description = "",
@@ -67,16 +147,7 @@ pub const PricingNode = struct {
     }
 
     pub fn deinit(self: *PricingNode, allocator: std.mem.Allocator) void {
-        allocator.free(self.id);
-        if (self.weights.len > 0) {
-            allocator.free(self.weights);
-        }
-        for (self.inputs) |input| {
-            allocator.free(input);
-        }
-        if (self.inputs.len > 0) {
-            allocator.free(self.inputs);
-        }
+        allocator.free(self.node_id);
         allocator.free(self.metadata.name);
         if (self.metadata.description.len > 0) {
             allocator.free(self.metadata.description);
@@ -92,37 +163,49 @@ pub const PricingNode = struct {
     }
 
     /// Returns the expected number of inputs (-1 means variable)
-    pub fn expectedInputCount(self: PricingNode) i32 {
+    pub fn expectedDependencyNodeCount(self: PricingNode) i32 {
         return switch (self.operation) {
-            .input, .constant => 0,
+            .constant_input_num, .constant_input_str, .dynamic_input_num, .dynamic_input_str, .conditional_value_input => 0,
             .negate, .abs, .sqrt, .exp, .log, .sin, .cos => 1,
             .add, .subtract, .multiply, .divide, .power, .modulo => 2,
             .clamp => 3, // value, min, max
-            .weighted_sum, .max, .min => -1, // variable inputs
+            .max, .min, .weighted_sum => -1, // variable inputs
         };
     }
 };
 
 test "PricingNode init and deinit" {
     const allocator = std.testing.allocator;
-    var node = try PricingNode.init(allocator, "test_node", .add);
+    const operation = NodeOperation{ .add = .{
+        .left_input_node_id = "node1",
+        .right_input_node_id = "node2",
+    } };
+    var node = try PricingNode.init(allocator, "test_node", operation);
     defer node.deinit(allocator);
 
-    try std.testing.expectEqualStrings("test_node", node.id);
-    try std.testing.expectEqual(OperationType.add, node.operation);
+    try std.testing.expectEqualStrings("test_node", node.node_id);
+    try std.testing.expectEqual(OperationType.add, @as(OperationType, node.operation));
 }
 
 test "PricingNode input expectations" {
     const allocator = std.testing.allocator;
-    var add_node = try PricingNode.init(allocator, "add", .add);
+
+    const add_operation = NodeOperation{ .add = .{
+        .left_input_node_id = "node1",
+        .right_input_node_id = "node2",
+    } };
+    var add_node = try PricingNode.init(allocator, "add", add_operation);
     defer add_node.deinit(allocator);
 
     try std.testing.expect(add_node.isMultiInput());
-    try std.testing.expectEqual(@as(i32, 2), add_node.expectedInputCount());
+    try std.testing.expectEqual(@as(i32, 2), add_node.expectedDependencyNodeCount());
 
-    var constant_node = try PricingNode.init(allocator, "const", .constant);
+    const constant_operation = NodeOperation{ .constant_input_num = .{
+        .value = 42.0,
+    } };
+    var constant_node = try PricingNode.init(allocator, "const", constant_operation);
     defer constant_node.deinit(allocator);
 
     try std.testing.expect(!constant_node.isMultiInput());
-    try std.testing.expectEqual(@as(i32, 0), constant_node.expectedInputCount());
+    try std.testing.expectEqual(@as(i32, 0), constant_node.expectedDependencyNodeCount());
 }

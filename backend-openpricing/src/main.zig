@@ -12,10 +12,10 @@ const generated = @import("generated_nodes");
 // 3. Build the project - nodes are auto-generated and compiled in!
 // 4. The pricing model is now baked into your binary at compile time!
 
-const PricingNodes = generated.nodes;
+const PRICING_NODES = generated.nodes;
 
 // Create the executor type based on the compile-time generated nodes
-const PricingExecutor = openpricing.ComptimeExecutorFromNodes(PricingNodes);
+const PRICING_EXECUTOR = openpricing.ComptimeExecutorFromNodes(PRICING_NODES);
 
 /// Main entry point - demonstrates the compile-time pricing model
 pub fn main() !void {
@@ -24,7 +24,7 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     // Initialize executor - everything is on the stack!
-    var executor = PricingExecutor.init();
+    var executor = PRICING_EXECUTOR.init();
     _ = allocator; // No longer needed
 
     // Execute pricing calculation
@@ -37,13 +37,13 @@ pub fn main() !void {
     std.debug.print("Pricing Model Information:\n", .{});
     std.debug.print("  - JSON parsed at: COMPILE TIME\n", .{});
     std.debug.print("  - Graph validated at: COMPILE TIME\n", .{});
-    std.debug.print("  - Nodes in model: {d}\n", .{PricingNodes.len});
+    std.debug.print("  - Nodes in model: {d}\n", .{PRICING_NODES.len});
     std.debug.print("  - Node storage: STACK (no heap!)\n", .{});
     std.debug.print("  - Execution: FULLY INLINED\n", .{});
     std.debug.print("\n", .{});
 
     std.debug.print("Compile-Time Node Information:\n", .{});
-    inline for (PricingNodes) |node| {
+    inline for (PRICING_NODES) |node| {
         std.debug.print("  [{s}] {s}\n", .{ @tagName(node.operation), node.name });
         std.debug.print("      Description: {s}\n", .{node.description});
         if (node.operation == .constant) {
@@ -64,7 +64,7 @@ pub fn main() !void {
 
     // Set input values - this is the ONLY runtime operation besides the math!
     // The example sets all input nodes to demonstrate the model
-    inline for (PricingNodes) |node| {
+    inline for (PRICING_NODES) |node| {
         if (node.operation == .input) {
             std.debug.print("  Setting {s} = 100.0\n", .{node.name});
             try executor.setInput(node.id, 100.0);
@@ -73,7 +73,7 @@ pub fn main() !void {
 
     // Execute - this is pure computation, fully inlined by the compiler!
     // Use the last node as output (typically the final result)
-    const output_node = PricingNodes[PricingNodes.len - 1];
+    const output_node = PRICING_NODES[PRICING_NODES.len - 1];
     const result = try executor.getOutput(output_node.id);
 
     std.debug.print("  {s}: ${d:.2}\n", .{ output_node.name, result });

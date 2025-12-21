@@ -55,6 +55,11 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const ComptimeNode) type {
                     const idx = comptime comptime_parser.getNodeIndex(nodes, node.id);
                     return self.node_values[idx];
                 },
+                .conditional_input => {
+                    // Input values are already stored in node_values by setInput
+                    const idx = comptime comptime_parser.getNodeIndex(nodes, node.id);
+                    return self.node_values[idx];
+                },
                 .constant => {
                     return node.constant_value;
                 },
@@ -141,17 +146,6 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const ComptimeNode) type {
                     }
                     return result;
                 },
-                .weighted_sum => {
-                    comptime if (node.inputs.len != node.weights.len) @compileError("Weighted sum requires equal number of inputs and weights");
-                    comptime if (node.inputs.len == 0) @compileError("Weighted sum requires at least 1 input");
-
-                    var result: f64 = 0.0;
-                    inline for (node.inputs, 0..) |input_id, i| {
-                        const val = self.node_values[comptime comptime_parser.getNodeIndex(nodes, input_id)];
-                        result += val * node.weights[i];
-                    }
-                    return result;
-                },
                 .clamp => {
                     comptime if (node.inputs.len != 3) @compileError("Clamp requires 3 inputs");
                     const val = self.node_values[comptime comptime_parser.getNodeIndex(nodes, node.inputs[0])];
@@ -167,8 +161,8 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const ComptimeNode) type {
     };
 }
 
-/// Helper function to create executor from JSON at compile time
-pub fn ComptimeExecutorFromJson(comptime json_str: []const u8) type {
-    const nodes = comptime comptime_parser.parseComptimeGraph(json_str);
-    return ComptimeExecutorFromNodes(nodes);
+// Aux funcctions 
+//
+fn roundTo2dp(value: f64) f64 {
+    return @round(value * 100.0) / 100.0;
 }

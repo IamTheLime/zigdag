@@ -38,6 +38,7 @@ fn parseOperation(comptime op_str: []const u8) OperationType {
         .{ "min", .min },
         .{ "clamp", .clamp },
         .{ "input", .input },
+        .{ "conditional_constant_input", .conditional_constant_input },
         .{ "constant", .constant },
     });
 

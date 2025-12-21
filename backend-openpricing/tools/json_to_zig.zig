@@ -68,8 +68,6 @@ pub fn main() !void {
         // Get inputs array
         const inputs = if (node.get("inputs")) |inp| inp.array.items else &[_]std.json.Value{};
 
-        // Get weights array
-        const weights = if (node.get("weights")) |w| w.array.items else &[_]std.json.Value{};
 
         // Get metadata
         const metadata = if (node.get("metadata")) |m| m.object else null;
@@ -88,16 +86,6 @@ pub fn main() !void {
             for (inputs, 0..) |input, j| {
                 if (j > 0) try writer.writeAll(", ");
                 try writer.print("\"{s}\"", .{input.string});
-            }
-        }
-        try writer.writeAll("},\n");
-
-        // Write weights array
-        try writer.writeAll("        .weights = &.{");
-        if (weights.len > 0) {
-            for (weights, 0..) |weight, j| {
-                if (j > 0) try writer.writeAll(", ");
-                try writer.print("{d}", .{weight.float});
             }
         }
         try writer.writeAll("},\n");
