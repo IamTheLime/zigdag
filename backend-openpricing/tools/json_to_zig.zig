@@ -63,7 +63,13 @@ pub fn main() !void {
 
         const id = node.get("id").?.string;
         const operation = node.get("operation").?.string;
-        const constant_value = if (node.get("constant_value")) |cv| cv.float else 0.0;
+        const constant_value = if (node.get("constant_value")) |cv| blk: {
+            break :blk switch (cv) {
+                .float => |f| f,
+                .integer => |int_val| @as(f64, @floatFromInt(int_val)),
+                else => 0.0,
+            };
+        } else 0.0;
         const constant_str_value = if (node.get("constant_str_value")) |cv| cv.string else "";
 
         // Get inputs array
@@ -102,7 +108,12 @@ pub fn main() !void {
         if (weights.len > 0) {
             for (weights, 0..) |weight, j| {
                 if (j > 0) try writer.writeAll(", ");
-                try writer.print("{d}", .{weight.float});
+                const weight_val = switch (weight) {
+                    .float => |f| f,
+                    .integer => |int_val| @as(f64, @floatFromInt(int_val)),
+                    else => 0.0,
+                };
+                try writer.print("{d}", .{weight_val});
             }
         }
         try writer.writeAll("},\n");
@@ -112,7 +123,12 @@ pub fn main() !void {
         if (allowed_values.len > 0) {
             for (allowed_values, 0..) |val, j| {
                 if (j > 0) try writer.writeAll(", ");
-                try writer.print("{d}", .{val.float});
+                const allowed_val = switch (val) {
+                    .float => |f| f,
+                    .integer => |int_val| @as(f64, @floatFromInt(int_val)),
+                    else => 0.0,
+                };
+                try writer.print("{d}", .{allowed_val});
             }
         }
         try writer.writeAll("},\n");

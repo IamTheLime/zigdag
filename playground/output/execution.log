@@ -1,0 +1,49 @@
+
+==============================================
+  OpenPricing - Compile-Time Engine
+==============================================
+
+Pricing Model Information:
+  - JSON parsed at: COMPILE TIME
+  - Graph validated at: COMPILE TIME
+  - Nodes in model: 4
+  - Node storage: STACK (no heap!)
+  - Execution: FULLY INLINED
+
+Compile-Time Node Information:
+  [constant_input_num] Constant (Number)
+      Description: This is the whatever
+      Value: 33.3
+  [constant_input_num] Constant (Number)
+      Description: Hardcoded numeric value
+      Value: 100
+  [add] Add
+      Description: Addition (a + b)
+      Inputs: constant_input_num_2, constant_input_num_1
+  [add] Add
+      Description: Addition (a + b)
+      Inputs: constant_input_num_2, add_3
+
+Running example calculation...
+  Add: $233.30
+
+Performance Characteristics:
+  - JSON parsing: ZERO (done at compile time)
+  - Graph validation: ZERO (done at compile time)
+  - Memory allocation: Minimal (just input hashmap)
+  - Execution: Pure computation (fully inlined)
+  - Node values: Stack-allocated array
+
+Code Generation:
+  The execute() function is completely inlined.
+  At runtime, this is just a few arithmetic operations!
+  No loops, no conditionals, no overhead.
+
+Workflow:
+  1. Design model in frontend (React Flow UI)
+  2. Export JSON to models/pricing_model.json
+  3. Rebuild - nodes auto-generated at compile time!
+  4. New model is baked into the binary
+  5. Use from Python with ctypes/cffi
+  6. Enjoy ZERO-OVERHEAD pricing calculations!
+

@@ -27,23 +27,32 @@ npm run dev
 
 → Open http://localhost:5173
 → Design your pricing graph
-→ Click **"Download JSON"**
+→ Click **"Save to Playground"**
+→ Save as `playground/pricing_model.json`
 
-### 2. Build (Backend)
+### 2. Test in Playground
+
+```bash
+./test-playground.sh
+```
+
+**Watch it:**
+- ✅ Validate JSON
+- ✅ Copy to backend
+- ✅ Compile to machine code
+- ✅ Execute with test values
+- ✅ Show results!
+
+### 3. Deploy to Production (Optional)
 
 ```bash
 cd backend-openpricing
-cp ~/Downloads/pricing_model.json models/
+cp ../playground/pricing_model.json models/
 zig build
+./zig-out/bin/openpricing-cli
 ```
 
 **That's it!** Your pricing model is now compiled into the binary.
-
-### 3. Run
-
-```bash
-./zig-out/bin/openpricing-cli
-```
 
 ---
 
@@ -94,13 +103,16 @@ Both compile to pure arithmetic. No performance difference.
 ```bash
 # Frontend
 cd frontend-openpricing
-npm run dev          # Start dev server
-npm run build        # Build for production
+npm run dev          # Start visual editor
 
-# Backend
+# Playground (Testing)
+./test-playground.sh         # Test once
+./test-playground.sh --watch # Auto-rebuild on changes
+
+# Backend (Production)
 cd backend-openpricing
-zig build            # Build everything (generates code + compiles)
-zig build run        # Build and run CLI demo
+zig build            # Build everything
+zig build run        # Build and run
 zig build test       # Run tests
 ```
 
@@ -130,6 +142,7 @@ zig build test       # Run tests
 
 ## Learn More
 
+- **Playground Guide**: See `PLAYGROUND_GUIDE.md` - Detailed testing workflow
 - **Complete Workflow**: See `WORKFLOW.md`
 - **Technical Deep Dive**: See `COMPILE_TIME_APPROACH.md`
 - **Project Summary**: See `README.md`

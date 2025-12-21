@@ -25,8 +25,11 @@ export type OperationType =
   | 'min'
   | 'clamp'
   // Input/constant nodes
-  | 'input'
-  | 'constant';
+  | 'dynamic_input_num'
+  | 'dynamic_input_str'
+  | 'constant_input_num'
+  | 'constant_input_str'
+  | 'conditional_value_input';
 
 export interface NodeMetadata {
   name: string;
@@ -40,8 +43,26 @@ export interface PricingNode {
   operation: OperationType;
   weights: number[];
   constant_value: number;
+  constant_str_value?: string;
+  allowed_values?: number[];
   inputs: string[];
   metadata: NodeMetadata;
+}
+
+/**
+ * Node configuration for different operation types
+ */
+export interface NodeConfig {
+  operation: OperationType;
+  label: string;
+  description: string;
+  category: 'input' | 'constant' | 'binary' | 'unary' | 'variadic';
+  inputCount: number | 'variable'; // Expected number of inputs
+  hasValue?: boolean; // Whether it has a constant_value
+  hasWeights?: boolean; // Whether it uses weights
+  hasAllowedValues?: boolean; // Whether it has allowed_values
+  color: string; // Node color in UI
+  icon?: string; // Optional icon
 }
 
 export interface PricingGraph {
