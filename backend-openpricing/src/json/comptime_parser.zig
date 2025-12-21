@@ -87,6 +87,7 @@ pub fn getNodeIndex(comptime nodes: []const ComptimeNode, comptime id: []const u
 pub fn computeExecutionOrder(comptime nodes: []const ComptimeNode) []const usize {
     // Simple topological sort using node order (assumes they're already in valid order)
     // For a more complex implementation, we'd need to compute dependencies
+    // TODO: Fix this, this is absolutely wrogn  the topoligical sort needs  to care about order
     var order: []const usize = &.{};
     inline for (0..nodes.len) |i| {
         order = order ++ &[_]usize{i};
