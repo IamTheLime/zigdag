@@ -5,7 +5,7 @@
       "operation": "input",
       "inputs": [],
       "weights": [],
-      "constant_value": 0.0,
+      "constant_value": 300.0,
       "metadata": {
         "name": "Base Price",
         "description": "Product base price",

@@ -13,35 +13,6 @@ pub const ComptimeNode = struct {
     description: []const u8,
 };
 
-/// Parse JSON at compile time using manual parsing (no allocator needed!)
-/// This creates a fully static node array that lives in .rodata
-pub fn parseComptimeGraph(comptime json_str: []const u8) []const ComptimeNode {
-    // For now, we'll provide a manual way to define nodes at compile time
-    // A full JSON parser at comptime is possible but complex
-    // Users can define nodes directly or we can implement a simple parser
-
-    // This is a placeholder - in practice, you'd either:
-    // 1. Write a simple comptime JSON parser (no allocations)
-    // 2. Or use a build step to generate Zig code from JSON
-
-    _ = json_str;
-
-    @compileError(
-        \\
-        \\Full compile-time JSON parsing is not yet implemented.
-        \\
-        \\For now, please define your nodes manually using defineComptimeNodes():
-        \\
-        \\const PricingNodes = openpricing.defineComptimeNodes(&.{
-        \\    .{ .id = "base_price", .operation = .input, ... },
-        \\    .{ .id = "markup", .operation = .constant, .constant_value = 1.2, ... },
-        \\    .{ .id = "final_price", .operation = .multiply, .inputs = &.{"base_price", "markup"}, ... },
-        \\});
-        \\
-        \\Or use the runtime JSON parser (still very fast, parsed once at startup).
-    );
-}
-
 /// Helper function to define nodes at compile time manually
 pub fn defineComptimeNodes(comptime nodes: []const ComptimeNode) []const ComptimeNode {
     return nodes;
