@@ -165,11 +165,58 @@ pub const PricingNode = struct {
     /// Returns the expected number of inputs (-1 means variable)
     pub fn expectedDependencyNodeCount(self: PricingNode) i32 {
         return switch (self.operation) {
-            .constant_input_num, .constant_input_str, .dynamic_input_num, .dynamic_input_str, .conditional_value_input => 0,
+            .constant_input_num, .constant_input_str, .dynamic_input_num, .dynamic_input_str => 0,
+            .conditional_value_input => 1,
             .negate, .abs, .sqrt, .exp, .log, .sin, .cos => 1,
             .add, .subtract, .multiply, .divide, .power, .modulo => 2,
             .clamp => 3, // value, min, max
             .max, .min, .weighted_sum => -1, // variable inputs
+        };
+    }
+
+    /// Returns all dependency node IDs for this node
+    /// Used for topological sorting and dependency analysis
+    pub fn getDependencies(self: PricingNode, allocator: std.mem.Allocator) ![]const []const u8 {
+        return switch (self.operation) {
+            // No dependencies
+            .constant_input_num, .constant_input_str, .dynamic_input_num, .dynamic_input_str => &.{},
+
+            // Single dependency
+            .conditional_value_input => |input| blk: {
+                var deps = try allocator.alloc([]const u8, 1);
+                deps[0] = input.input_node;
+                break :blk deps;
+            },
+
+            // Unary operations - 1 dependency
+            .negate, .abs, .sqrt, .exp, .log, .sin, .cos => |input| blk: {
+                var deps = try allocator.alloc([]const u8, 1);
+                deps[0] = input.input_node_id;
+                break :blk deps;
+            },
+
+            // Binary operations - 2 dependencies
+            .add, .subtract, .multiply, .divide, .power, .modulo => |inputs| blk: {
+                var deps = try allocator.alloc([]const u8, 2);
+                deps[0] = inputs.left_input_node_id;
+                deps[1] = inputs.right_input_node_id;
+                break :blk deps;
+            },
+
+            // Clamp - 3 dependencies
+            .clamp => |inputs| blk: {
+                var deps = try allocator.alloc([]const u8, 3);
+                deps[0] = inputs.value;
+                deps[1] = inputs.min;
+                deps[2] = inputs.max;
+                break :blk deps;
+            },
+
+            // Variadic operations - variable dependencies
+            .max, .min => |inputs| try allocator.dupe([]const u8, inputs.node_input_ids),
+
+            // Weighted sum - variable dependencies
+            .weighted_sum => |inputs| try allocator.dupe([]const u8, inputs.node_input_ids),
         };
     }
 };

@@ -50,17 +50,28 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const ComptimeNode) type {
         /// Evaluate a single node - completely inlined!
         fn evaluateNode(self: *Self, comptime node: ComptimeNode) !f64 {
             switch (node.operation) {
-                .input => {
-                    // Input values are already stored in node_values by setInput
+                .dynamic_input_num => {
+                    // Dynamic input values are set at runtime by setInput
                     const idx = comptime comptime_parser.getNodeIndex(nodes, node.id);
                     return self.node_values[idx];
                 },
-                .conditional_input => {
-                    // Input values are already stored in node_values by setInput
+                .dynamic_input_str => {
+                    // Dynamic string input values are set at runtime by setInput
                     const idx = comptime comptime_parser.getNodeIndex(nodes, node.id);
                     return self.node_values[idx];
                 },
-                .constant => {
+                .conditional_value_input => {
+                    // Conditional input values are set at runtime by setInput
+                    const idx = comptime comptime_parser.getNodeIndex(nodes, node.id);
+                    return self.node_values[idx];
+                },
+                .constant_input_num => {
+                    // Constant values are baked into the graph at compile time
+                    return node.constant_value;
+                },
+                .constant_input_str => {
+                    // For now, string constants return 0.0 (will be enhanced later)
+                    // This is a placeholder for string-based logic
                     return node.constant_value;
                 },
                 .add => {
@@ -161,8 +172,7 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const ComptimeNode) type {
     };
 }
 
-// Aux funcctions 
-//
+// Aux functions
 fn roundTo2dp(value: f64) f64 {
     return @round(value * 100.0) / 100.0;
 }

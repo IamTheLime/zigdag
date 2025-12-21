@@ -46,8 +46,16 @@ pub fn main() !void {
     inline for (PRICING_NODES) |node| {
         std.debug.print("  [{s}] {s}\n", .{ @tagName(node.operation), node.name });
         std.debug.print("      Description: {s}\n", .{node.description});
-        if (node.operation == .constant) {
+        if (node.operation == .constant_input_num) {
             std.debug.print("      Value: {d}\n", .{node.constant_value});
+        }
+        if (node.operation == .dynamic_input_num and node.allowed_values.len > 0) {
+            std.debug.print("      Allowed values: ", .{});
+            inline for (node.allowed_values, 0..) |val, i| {
+                if (i > 0) std.debug.print(", ", .{});
+                std.debug.print("{d}", .{val});
+            }
+            std.debug.print("\n", .{});
         }
         if (node.inputs.len > 0) {
             std.debug.print("      Inputs: ", .{});
@@ -63,9 +71,9 @@ pub fn main() !void {
     std.debug.print("Running example calculation...\n", .{});
 
     // Set input values - this is the ONLY runtime operation besides the math!
-    // The example sets all input nodes to demonstrate the model
+    // The example sets all dynamic input nodes to demonstrate the model
     inline for (PRICING_NODES) |node| {
-        if (node.operation == .input) {
+        if (node.operation == .dynamic_input_num) {
             std.debug.print("  Setting {s} = 100.0\n", .{node.name});
             try executor.setInput(node.id, 100.0);
         }

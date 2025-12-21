@@ -64,10 +64,16 @@ pub fn main() !void {
         const id = node.get("id").?.string;
         const operation = node.get("operation").?.string;
         const constant_value = if (node.get("constant_value")) |cv| cv.float else 0.0;
+        const constant_str_value = if (node.get("constant_str_value")) |cv| cv.string else "";
 
         // Get inputs array
         const inputs = if (node.get("inputs")) |inp| inp.array.items else &[_]std.json.Value{};
 
+        // Get weights array (for weighted_sum)
+        const weights = if (node.get("weights")) |w| w.array.items else &[_]std.json.Value{};
+
+        // Get allowed_values (for dynamic inputs)
+        const allowed_values = if (node.get("allowed_values")) |av| av.array.items else &[_]std.json.Value{};
 
         // Get metadata
         const metadata = if (node.get("metadata")) |m| m.object else null;
@@ -79,6 +85,7 @@ pub fn main() !void {
         try writer.print("        .id = \"{s}\",\n", .{id});
         try writer.print("        .operation = .{s},\n", .{operation});
         try writer.print("        .constant_value = {d},\n", .{constant_value});
+        try writer.print("        .constant_str_value = \"{s}\",\n", .{constant_str_value});
 
         // Write inputs array
         try writer.writeAll("        .inputs = &.{");
@@ -86,6 +93,26 @@ pub fn main() !void {
             for (inputs, 0..) |input, j| {
                 if (j > 0) try writer.writeAll(", ");
                 try writer.print("\"{s}\"", .{input.string});
+            }
+        }
+        try writer.writeAll("},\n");
+
+        // Write weights array
+        try writer.writeAll("        .weights = &.{");
+        if (weights.len > 0) {
+            for (weights, 0..) |weight, j| {
+                if (j > 0) try writer.writeAll(", ");
+                try writer.print("{d}", .{weight.float});
+            }
+        }
+        try writer.writeAll("},\n");
+
+        // Write allowed_values array
+        try writer.writeAll("        .allowed_values = &.{");
+        if (allowed_values.len > 0) {
+            for (allowed_values, 0..) |val, j| {
+                if (j > 0) try writer.writeAll(", ");
+                try writer.print("{d}", .{val.float});
             }
         }
         try writer.writeAll("},\n");

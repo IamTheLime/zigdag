@@ -2,26 +2,28 @@
   "nodes": [
     {
       "id": "base_price",
-      "operation": "input",
+      "operation": "dynamic_input_num",
       "inputs": [],
       "weights": [],
-      "constant_value": 300.0,
+      "constant_value": 0.0,
+      "allowed_values": [100.0, 200.0, 300.0, 400.0, 500.0],
       "metadata": {
         "name": "Base Price",
-        "description": "Product base price",
+        "description": "Product base price (dynamic user input)",
         "position_x": 50,
         "position_y": 50
       }
     },
     {
       "id": "quantity",
-      "operation": "input",
+      "operation": "dynamic_input_num",
       "inputs": [],
       "weights": [],
       "constant_value": 0.0,
+      "allowed_values": [1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 20.0, 50.0, 100.0],
       "metadata": {
         "name": "Quantity",
-        "description": "Number of items",
+        "description": "Number of items (dynamic user input)",
         "position_x": 50,
         "position_y": 150
       }
@@ -41,13 +43,13 @@
     },
     {
       "id": "discount_rate",
-      "operation": "constant",
+      "operation": "constant_input_num",
       "inputs": [],
       "weights": [],
       "constant_value": 0.1,
       "metadata": {
         "name": "Discount Rate",
-        "description": "10% discount",
+        "description": "10% discount (constant)",
         "position_x": 250,
         "position_y": 250
       }
@@ -80,13 +82,13 @@
     },
     {
       "id": "tax_rate",
-      "operation": "constant",
+      "operation": "constant_input_num",
       "inputs": [],
       "weights": [],
       "constant_value": 0.08,
       "metadata": {
         "name": "Tax Rate",
-        "description": "8% sales tax",
+        "description": "8% sales tax (constant)",
         "position_x": 650,
         "position_y": 250
       }
