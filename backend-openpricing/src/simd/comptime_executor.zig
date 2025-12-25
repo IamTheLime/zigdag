@@ -3,10 +3,6 @@ const comptime_parser = @import("../json/comptime_parser.zig");
 const OperationType = @import("../core/node.zig").OperationType;
 const ComptimeNode = comptime_parser.ComptimeNode;
 
-/// SIMD vector size - using 256-bit AVX (4 doubles)
-pub const SIMD_WIDTH = 4;
-pub const SimdVec = @Vector(SIMD_WIDTH, f64);
-
 /// Compile-time executor that works with static nodes from JSON
 /// All graph structure is resolved at compile time - only values are runtime!
 pub fn ComptimeExecutorFromNodes(comptime nodes: []const ComptimeNode) type {
