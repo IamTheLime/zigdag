@@ -10,7 +10,17 @@ Design pricing graphs in React, export as JSON, and compile directly into your b
 # 1. Design your pricing model in the UI
 cd frontend-openpricing
 npm install && npm run dev
-# Open http://localhost:5173, design your graph, download JSON
+# Open http://localhost:5173
+
+# OPTION A: Import existing model
+# - Click "Import Model" button
+# - Select backend-openpricing/models/pricing_model.json
+# - Edit and export
+
+# OPTION B: Create from scratch
+# - Drag nodes from palette or press Cmd/Ctrl+K
+# - Connect nodes by dragging from handles
+# - Click "Generate JSON" and "Save to Playground"
 
 # 2. Build and run
 cd ../backend-openpricing

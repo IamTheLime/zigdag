@@ -49,12 +49,12 @@ export const NODE_DEFINITIONS: Record<OperationType, NodeConfig> = {
     icon: '📋',
   },
 
-  // Conditional Input
+  // Conditional Value (Unary Operation)
   conditional_value_input: {
     operation: 'conditional_value_input',
     label: 'Conditional Value',
-    description: 'Maps input values to outputs',
-    category: 'input',
+    description: 'Maps string input to numeric output',
+    category: 'unary',
     inputCount: 1,
     hasConditionalValues: true,
     color: '#FF9800',

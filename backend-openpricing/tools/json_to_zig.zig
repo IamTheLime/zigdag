@@ -189,10 +189,30 @@ fn writeOperation(writer: anytype, operation: []const u8, node: std.json.ObjectM
             inputs[2].string,
         });
     } else if (std.mem.eql(u8, operation, "conditional_value_input")) {
-        // Conditional value input - for now, simplified
+        // Conditional value input - maps string inputs to numeric outputs
         const inputs = if (node.get("inputs")) |inp| inp.array.items else &[_]std.json.Value{};
         const input_node = if (inputs.len > 0) inputs[0].string else "";
-        try writer.print(".{{ .input_node = \"{s}\", .value_map = undefined }}", .{input_node});
+
+        // Parse conditional_values map
+        try writer.print(".{{ .input_node = \"{s}\", .value_map = &.{{", .{input_node});
+
+        if (node.get("conditional_values")) |cond_values| {
+            const map = cond_values.object;
+            var first = true;
+            var it = map.iterator();
+            while (it.next()) |entry| {
+                if (!first) try writer.writeAll(", ");
+                first = false;
+                const value = switch (entry.value_ptr.*) {
+                    .float => |f| f,
+                    .integer => |int_val| @as(f64, @floatFromInt(int_val)),
+                    else => 0.0,
+                };
+                try writer.print(".{{ .key = \"{s}\", .value = {d} }}", .{ entry.key_ptr.*, value });
+            }
+        }
+
+        try writer.writeAll("} }");
     } else if (std.mem.eql(u8, operation, "constant_input_num")) {
         // Constant numeric input
         const constant_value = if (node.get("constant_value")) |cv| switch (cv) {

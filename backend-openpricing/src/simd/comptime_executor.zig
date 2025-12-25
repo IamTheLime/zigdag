@@ -57,10 +57,33 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const PricingNode) type {
                     const idx = comptime comptime_parser.getNodeIndex(nodes, node.node_id);
                     return self.node_values[idx];
                 },
-                .conditional_value_input => |_| {
-                    // Conditional input values are set at runtime by setInput
-                    const idx = comptime comptime_parser.getNodeIndex(nodes, node.node_id);
-                    return self.node_values[idx];
+                .conditional_value_input => |op| {
+                    // Get the input node and look up its string value
+                    const input_idx = comptime comptime_parser.getNodeIndex(nodes, op.input_node);
+                    const input_node = comptime nodes[input_idx];
+
+                    // The input must be a constant_input_str
+                    const str_value = switch (input_node.operation) {
+                        .constant_input_str => |str_op| str_op.value,
+                        else => @compileError("conditional_value_input must have a constant_input_str as input"),
+                    };
+
+                    // Look up the value in the map at compile time
+                    comptime var result: f64 = 0.0;
+                    comptime var found = false;
+                    inline for (op.value_map) |mapping| {
+                        if (comptime std.mem.eql(u8, mapping.key, str_value)) {
+                            result = mapping.value;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (comptime !found) {
+                        @compileError("No mapping found for value: " ++ str_value);
+                    }
+
+                    return result;
                 },
                 .constant_input_num => |op| {
                     // Constant values are baked into the graph at compile time

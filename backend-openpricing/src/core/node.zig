@@ -60,7 +60,7 @@ pub const ClampInputs = struct {
 
 pub const ConditionalValueInput = struct {
     input_node: []const u8,
-    value_map: std.StringHashMap(f64), // Maps condition values to outputs
+    value_map: []const struct { key: []const u8, value: f64 }, // Maps string keys to numeric outputs
 };
 
 pub const ValueInputNum = struct {

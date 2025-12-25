@@ -83,12 +83,6 @@ pub fn main() !void {
             std.debug.print("  Setting {s} = 100.0\n", .{node.metadata.name});
             try executor.setInput(node.node_id, 100.0);
         }
-        // Conditional value inputs are also set to 100.0 for testing
-        // (In production, these would be computed from the conditional_values map)
-        if (node.operation == .conditional_value_input) {
-            std.debug.print("  Setting {s} = 100.0 (test default)\n", .{node.metadata.name});
-            try executor.setInput(node.node_id, 100.0);
-        }
     }
 
     // Execute - this is pure computation, fully inlined by the compiler!

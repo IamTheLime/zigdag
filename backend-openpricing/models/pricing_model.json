@@ -1,7 +1,22 @@
 {
   "nodes": [
     {
-      "id": "constant_input_str_1",
+      "id": "constant_input_num_1",
+      "operation": "constant_input_num",
+      "weights": [],
+      "constant_value": 100,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "Constant (Number)",
+        "description": "Hardcoded numeric value",
+        "position_x": 1005.2070398678081,
+        "position_y": 494.7401686574945
+      }
+    },
+    {
+      "id": "constant_input_str_2",
       "operation": "constant_input_str",
       "weights": [],
       "constant_value": 0,
@@ -12,29 +27,8 @@
       "metadata": {
         "name": "Constant (String)",
         "description": "Hardcoded string value",
-        "position_x": 918.5,
-        "position_y": 523
-      }
-    },
-    {
-      "id": "conditional_value_input_2",
-      "operation": "conditional_value_input",
-      "weights": [],
-      "constant_value": 0,
-      "allowed_values": [],
-      "conditional_values": {
-        "cat": 300,
-        "turtle": 150,
-        "unicorn": 500
-      },
-      "inputs": [
-        "constant_input_str_1"
-      ],
-      "metadata": {
-        "name": "Conditional Value",
-        "description": "Maps input values to outputs",
-        "position_x": 1425.391508270835,
-        "position_y": 714.3529052993907
+        "position_x": 1028.6873771827973,
+        "position_y": 1030.1325000910144
       }
     },
     {
@@ -45,47 +39,51 @@
       "allowed_values": [],
       "conditional_values": {},
       "inputs": [
-        "conditional_value_input_2",
-        "constant_input_num_4"
+        "constant_input_num_1",
+        "conditional_value_input_4"
       ],
       "metadata": {
         "name": "Multiply",
         "description": "Multiplication (a × b)",
-        "position_x": 2046.1268941801138,
-        "position_y": 1209.8160039562565
+        "position_x": 2235.5175770679257,
+        "position_y": 553.5305443699244
       }
     },
     {
-      "id": "constant_input_num_4",
-      "operation": "constant_input_num",
+      "id": "conditional_value_input_4",
+      "operation": "conditional_value_input",
       "weights": [],
-      "constant_value": 200,
+      "constant_value": 0,
       "allowed_values": [],
-      "conditional_values": {},
-      "inputs": [],
+      "conditional_values": {
+        "cat": 100,
+        "turtle": 200
+      },
+      "inputs": [
+        "constant_input_str_2"
+      ],
       "metadata": {
-        "name": "Constant (Number)",
-        "description": "Hardcoded numeric value",
-        "position_x": 927.1167125762945,
-        "position_y": 1396.0716229087666
+        "name": "Conditional Value",
+        "description": "Maps input values to outputs",
+        "position_x": 1623.8985430815856,
+        "position_y": 945.4145936060228
       }
     },
     {
-      "id": "multiply_5",
-      "operation": "multiply",
+      "id": "funnel_5",
+      "operation": "funnel",
       "weights": [],
       "constant_value": 0,
       "allowed_values": [],
       "conditional_values": {},
       "inputs": [
-        "multiply_3",
-        "constant_input_num_6"
+        "multiply_7"
       ],
       "metadata": {
-        "name": "Multiply",
-        "description": "Multiplication (a × b)",
-        "position_x": 2817.1312131402474,
-        "position_y": 1464.642659193502
+        "name": "Final Output",
+        "description": "Marks the final output of the pricing model",
+        "position_x": 3156.4778800883555,
+        "position_y": 973.5549696078829
       }
     },
     {
@@ -99,25 +97,26 @@
       "metadata": {
         "name": "Constant (Number)",
         "description": "Hardcoded numeric value",
-        "position_x": 1592.350750170764,
-        "position_y": 2025.893940903269
+        "position_x": 2200.18962927164,
+        "position_y": 1384.4262932653103
       }
     },
     {
-      "id": "funnel_output",
-      "operation": "funnel",
+      "id": "multiply_7",
+      "operation": "multiply",
       "weights": [],
       "constant_value": 0,
       "allowed_values": [],
       "conditional_values": {},
       "inputs": [
-        "multiply_5"
+        "multiply_3",
+        "constant_input_num_6"
       ],
       "metadata": {
-        "name": "Final Output",
-        "description": "The final output of the pricing model",
-        "position_x": 3400,
-        "position_y": 1500
+        "name": "Multiply",
+        "description": "Multiplication (a × b)",
+        "position_x": 2701.4887698435678,
+        "position_y": 973.4974059257368
       }
     }
   ]

@@ -14,6 +14,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import type { PricingNode, PricingGraph, OperationType } from './types/pricing';
 import { createNode } from './utils/nodeFactory';
+import { getNodeDefinition } from './config/nodeDefinitions';
 import PricingNodeComponent from './components/PricingNode';
 import CustomEdge from './components/CustomEdge';
 import NodePalette from './components/NodePalette';
@@ -30,6 +31,7 @@ import {
   XCircle,
   BarChart3,
   Workflow,
+  Upload,
 } from 'lucide-react';
 
 const nodeTypes = {
@@ -234,6 +236,118 @@ function FlowEditor() {
     }
   }, [setNodes, setEdges]);
 
+  const importFromJson = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const jsonContent = event.target?.result as string;
+          const graph: PricingGraph = JSON.parse(jsonContent);
+          
+          // Clear existing nodes and edges
+          setNodes([]);
+          setEdges([]);
+          
+          // Convert PricingNodes to ReactFlow nodes
+          const newNodes = graph.nodes.map((pricingNode) => {
+            const position = {
+              x: pricingNode.metadata.position_x,
+              y: pricingNode.metadata.position_y,
+            };
+            
+            // Get the node definition to retrieve all configuration properties
+            const def = getNodeDefinition(pricingNode.operation);
+            
+            return {
+              id: pricingNode.id,
+              type: 'custom',
+              position,
+              data: {
+                operation: pricingNode.operation,
+                label: pricingNode.metadata.name || def.label,
+                description: pricingNode.metadata.description || def.description,
+                category: def.category,
+                color: def.color,
+                icon: def.icon,
+                inputCount: def.inputCount,
+                hasValue: def.hasValue,
+                hasWeights: def.hasWeights,
+                hasAllowedValues: def.hasAllowedValues,
+                hasConditionalValues: def.hasConditionalValues,
+                customId: pricingNode.id,
+                customDescription: pricingNode.metadata.description,
+                value: pricingNode.constant_value,
+                stringValue: pricingNode.constant_str_value,
+                allowedValues: pricingNode.allowed_values || [],
+                conditionalValues: pricingNode.conditional_values || {},
+                weights: pricingNode.weights || [],
+              },
+            };
+          });
+
+          // Create edges from the inputs array
+          const newEdges: any[] = [];
+          graph.nodes.forEach((pricingNode) => {
+            pricingNode.inputs.forEach((sourceId, index) => {
+              const targetNode = pricingNode;
+              
+              // Determine the target handle based on the operation and index
+              let targetHandle = 'target';
+              
+              // For binary operations, use target-a and target-b
+              if (['add', 'subtract', 'multiply', 'divide', 'power', 'modulo'].includes(pricingNode.operation)) {
+                targetHandle = index === 0 ? 'target-a' : 'target-b';
+              } 
+              // For clamp, use target-value, target-min, target-max
+              else if (pricingNode.operation === 'clamp') {
+                targetHandle = ['target-value', 'target-min', 'target-max'][index] || `target-${index}`;
+              }
+              // For variadic operations (max, min, weighted_sum), use target-0, target-1, etc.
+              else if (['max', 'min', 'weighted_sum'].includes(pricingNode.operation)) {
+                targetHandle = `target-${index}`;
+              }
+
+              newEdges.push({
+                id: `${sourceId}-${targetNode.id}-${index}`,
+                source: sourceId,
+                target: targetNode.id,
+                targetHandle,
+                type: 'custom',
+                animated: true,
+              });
+            });
+          });
+
+          setNodes(newNodes);
+          setEdges(newEdges);
+          setJsonOutput(jsonContent);
+          
+          // Fit view to show all imported nodes
+          setTimeout(() => {
+            reactFlowInstance?.fitView({ padding: 0.2 });
+          }, 0);
+          
+          alert(`Imported ${newNodes.length} nodes successfully!`);
+        } catch (error) {
+          console.error('Error importing JSON:', error);
+          alert('Error importing JSON. Please check the file format.');
+        }
+      };
+      
+      reader.readAsText(file);
+    };
+    
+    input.click();
+  }, [setNodes, setEdges, reactFlowInstance]);
+
   const deleteSelected = useCallback(() => {
     setNodes((nds) => nds.filter((node) => !node.selected));
     setEdges((eds) => eds.filter((edge) => !edge.selected));
@@ -328,6 +442,10 @@ function FlowEditor() {
 
         {/* Action Buttons */}
         <div className="space-y-2">
+          <Button onClick={importFromJson} className="w-full" size="lg" variant="default">
+            <Upload className="mr-2 h-4 w-4" />
+            Import Model
+          </Button>
           <Button onClick={exportToJson} className="w-full" size="lg">
             <FileJson className="mr-2 h-4 w-4" />
             Generate JSON
@@ -406,7 +524,8 @@ function FlowEditor() {
           </CardHeader>
           <CardContent>
             <ol className="text-xs space-y-2 list-decimal list-inside text-muted-foreground">
-              <li>Press <kbd className="bg-muted px-1 rounded">⌘K</kbd> to search for nodes</li>
+              <li>Click "Import Model" to load existing JSON</li>
+              <li>Or press <kbd className="bg-muted px-1 rounded">⌘K</kbd> to search for nodes</li>
               <li>Or drag nodes from palette</li>
               <li>Connect nodes by dragging from handles</li>
               <li>Click connections to delete them</li>

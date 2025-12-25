@@ -59,11 +59,19 @@ npm run dev
 
 Open your browser to `http://localhost:5173`
 
-### Design Your Graph
+### Option A: Import Existing Model
 
-1. **Add Nodes**: The UI starts with a simple example (base_price × markup)
+1. **Click "Import Model"** button in the right panel
+2. **Select JSON file** - for example: `backend-openpricing/models/pricing_model.json`
+3. **Edit the graph** - modify nodes, connections, or values
+4. **Export** when done
+
+### Option B: Design From Scratch
+
+1. **Add Nodes**: Press `Cmd/Ctrl+K` or drag from the left palette
 2. **Connect Nodes**: Drag from output handles to input handles
 3. **Position Nodes**: Drag nodes to arrange them visually
+4. **Configure Values**: Click on nodes to edit values, names, and descriptions
 
 ### Supported Node Types
 
@@ -283,11 +291,18 @@ console.log(result); // 120
 
 ### Quick Iteration Workflow
 
-1. **Modify** graph in frontend
-2. **Export** new JSON (overwrites old one)
-3. **Copy** to `backend-openpricing/models/`
-4. **Rebuild**: `zig build`
-5. **Test**: `zig build run`
+#### Method 1: Import → Edit → Export
+1. **Import** existing model using "Import Model" button
+2. **Modify** graph in frontend
+3. **Export** new JSON (click "Save to Playground")
+4. **Copy** to `backend-openpricing/models/`
+5. **Rebuild**: `zig build`
+6. **Test**: `zig build run`
+
+#### Method 2: Direct File Watching
+1. Keep frontend open with imported model
+2. Make changes and export
+3. Use `zig build run` to test immediately
 
 ### Tips for Development
 
