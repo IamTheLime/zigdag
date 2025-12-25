@@ -47,6 +47,8 @@ pub fn main() !void {
         \\
         \\const openpricing = @import("openpricing");
         \\const ComptimeNode = openpricing.comptime_parser.ComptimeNode;
+        \\const NodeOperation = openpricing.node.NodeOperation;
+        \\const NodeMetadata = openpricing.node.PricingNode.NodeMetadata;
         \\
         \\/// Compile-time pricing nodes generated from JSON
         \\/// These are fully static and live in the .rodata section
@@ -62,79 +64,38 @@ pub fn main() !void {
         const node = node_value.object;
 
         const id = node.get("id").?.string;
-        const operation = node.get("operation").?.string;
-        const constant_value = if (node.get("constant_value")) |cv| blk: {
-            break :blk switch (cv) {
-                .float => |f| f,
-                .integer => |int_val| @as(f64, @floatFromInt(int_val)),
-                else => 0.0,
-            };
-        } else 0.0;
-        const constant_str_value = if (node.get("constant_str_value")) |cv| cv.string else "";
-
-        // Get inputs array
-        const inputs = if (node.get("inputs")) |inp| inp.array.items else &[_]std.json.Value{};
-
-        // Get weights array (for weighted_sum)
-        const weights = if (node.get("weights")) |w| w.array.items else &[_]std.json.Value{};
-
-        // Get allowed_values (for dynamic inputs)
-        const allowed_values = if (node.get("allowed_values")) |av| av.array.items else &[_]std.json.Value{};
+        const operation_str = node.get("operation").?.string;
 
         // Get metadata
         const metadata = if (node.get("metadata")) |m| m.object else null;
         const name = if (metadata) |m| if (m.get("name")) |n| n.string else id else id;
         const description = if (metadata) |m| if (m.get("description")) |d| d.string else "" else "";
+        const position_x = if (metadata) |m| if (m.get("position_x")) |px| switch (px) {
+            .float => |f| f,
+            .integer => |int_val| @as(f64, @floatFromInt(int_val)),
+            else => 0.0,
+        } else 0.0 else 0.0;
+        const position_y = if (metadata) |m| if (m.get("position_y")) |py| switch (py) {
+            .float => |f| f,
+            .integer => |int_val| @as(f64, @floatFromInt(int_val)),
+            else => 0.0,
+        } else 0.0 else 0.0;
 
         // Write node definition
         try writer.print("    .{{\n", .{});
-        try writer.print("        .id = \"{s}\",\n", .{id});
-        try writer.print("        .operation = .{s},\n", .{operation});
-        try writer.print("        .constant_value = {d},\n", .{constant_value});
-        try writer.print("        .constant_str_value = \"{s}\",\n", .{constant_str_value});
+        try writer.print("        .node_id = \"{s}\",\n", .{id});
 
-        // Write inputs array
-        try writer.writeAll("        .inputs = &.{");
-        if (inputs.len > 0) {
-            for (inputs, 0..) |input, j| {
-                if (j > 0) try writer.writeAll(", ");
-                try writer.print("\"{s}\"", .{input.string});
-            }
-        }
-        try writer.writeAll("},\n");
+        // Generate the typed operation union
+        try writeOperation(writer, operation_str, node);
 
-        // Write weights array
-        try writer.writeAll("        .weights = &.{");
-        if (weights.len > 0) {
-            for (weights, 0..) |weight, j| {
-                if (j > 0) try writer.writeAll(", ");
-                const weight_val = switch (weight) {
-                    .float => |f| f,
-                    .integer => |int_val| @as(f64, @floatFromInt(int_val)),
-                    else => 0.0,
-                };
-                try writer.print("{d}", .{weight_val});
-            }
-        }
-        try writer.writeAll("},\n");
+        // Write metadata
+        try writer.writeAll("        .metadata = .{\n");
+        try writer.print("            .name = \"{s}\",\n", .{name});
+        try writer.print("            .description = \"{s}\",\n", .{description});
+        try writer.print("            .position_x = {d},\n", .{position_x});
+        try writer.print("            .position_y = {d},\n", .{position_y});
+        try writer.writeAll("        },\n");
 
-        // Write allowed_values array
-        try writer.writeAll("        .allowed_values = &.{");
-        if (allowed_values.len > 0) {
-            for (allowed_values, 0..) |val, j| {
-                if (j > 0) try writer.writeAll(", ");
-                const allowed_val = switch (val) {
-                    .float => |f| f,
-                    .integer => |int_val| @as(f64, @floatFromInt(int_val)),
-                    else => 0.0,
-                };
-                try writer.print("{d}", .{allowed_val});
-            }
-        }
-        try writer.writeAll("},\n");
-
-        try writer.print("        .name = \"{s}\",\n", .{name});
-        try writer.print("        .description = \"{s}\",\n", .{description});
         try writer.writeAll("    }");
 
         if (i < nodes_array.items.len - 1) {
@@ -157,4 +118,112 @@ pub fn main() !void {
     try output_file.writeAll(output.items);
 
     std.debug.print("✓ Generated {d} nodes from {s} -> {s}\n", .{ nodes_array.items.len, input_path, output_path });
+}
+
+fn writeOperation(writer: anytype, operation: []const u8, node: std.json.ObjectMap) !void {
+    try writer.print("        .operation = .{{ .{s} = ", .{operation});
+
+    if (std.mem.eql(u8, operation, "add") or
+        std.mem.eql(u8, operation, "subtract") or
+        std.mem.eql(u8, operation, "multiply") or
+        std.mem.eql(u8, operation, "divide") or
+        std.mem.eql(u8, operation, "power") or
+        std.mem.eql(u8, operation, "modulo"))
+    {
+        // Binary operations
+        const inputs = node.get("inputs").?.array.items;
+        if (inputs.len != 2) return error.BinaryOpRequires2Inputs;
+        try writer.print(".{{ .left_input_node_id = \"{s}\", .right_input_node_id = \"{s}\" }}", .{
+            inputs[0].string,
+            inputs[1].string,
+        });
+    } else if (std.mem.eql(u8, operation, "negate") or
+        std.mem.eql(u8, operation, "abs") or
+        std.mem.eql(u8, operation, "sqrt") or
+        std.mem.eql(u8, operation, "exp") or
+        std.mem.eql(u8, operation, "log") or
+        std.mem.eql(u8, operation, "sin") or
+        std.mem.eql(u8, operation, "cos"))
+    {
+        // Unary operations
+        const inputs = node.get("inputs").?.array.items;
+        if (inputs.len != 1) return error.UnaryOpRequires1Input;
+        try writer.print(".{{ .input_node_id = \"{s}\" }}", .{inputs[0].string});
+    } else if (std.mem.eql(u8, operation, "max") or std.mem.eql(u8, operation, "min")) {
+        // Variadic operations
+        const inputs = node.get("inputs").?.array.items;
+        try writer.writeAll(".{ .node_input_ids = &.{");
+        for (inputs, 0..) |input, j| {
+            if (j > 0) try writer.writeAll(", ");
+            try writer.print("\"{s}\"", .{input.string});
+        }
+        try writer.writeAll("} }");
+    } else if (std.mem.eql(u8, operation, "weighted_sum")) {
+        // Weighted sum
+        const inputs = node.get("inputs").?.array.items;
+        const weights = node.get("weights").?.array.items;
+        try writer.writeAll(".{ .node_input_ids = &.{");
+        for (inputs, 0..) |input, j| {
+            if (j > 0) try writer.writeAll(", ");
+            try writer.print("\"{s}\"", .{input.string});
+        }
+        try writer.writeAll("}, .weights = &.{");
+        for (weights, 0..) |weight, j| {
+            if (j > 0) try writer.writeAll(", ");
+            const weight_val = switch (weight) {
+                .float => |f| f,
+                .integer => |int_val| @as(f64, @floatFromInt(int_val)),
+                else => 0.0,
+            };
+            try writer.print("{d}", .{weight_val});
+        }
+        try writer.writeAll("} }");
+    } else if (std.mem.eql(u8, operation, "clamp")) {
+        // Clamp
+        const inputs = node.get("inputs").?.array.items;
+        if (inputs.len != 3) return error.ClampRequires3Inputs;
+        try writer.print(".{{ .value = \"{s}\", .min = \"{s}\", .max = \"{s}\" }}", .{
+            inputs[0].string,
+            inputs[1].string,
+            inputs[2].string,
+        });
+    } else if (std.mem.eql(u8, operation, "conditional_value_input")) {
+        // Conditional value input - for now, simplified
+        const inputs = if (node.get("inputs")) |inp| inp.array.items else &[_]std.json.Value{};
+        const input_node = if (inputs.len > 0) inputs[0].string else "";
+        try writer.print(".{{ .input_node = \"{s}\", .value_map = undefined }}", .{input_node});
+    } else if (std.mem.eql(u8, operation, "constant_input_num")) {
+        // Constant numeric input
+        const constant_value = if (node.get("constant_value")) |cv| switch (cv) {
+            .float => |f| f,
+            .integer => |int_val| @as(f64, @floatFromInt(int_val)),
+            else => 0.0,
+        } else 0.0;
+        try writer.print(".{{ .value = {d} }}", .{constant_value});
+    } else if (std.mem.eql(u8, operation, "constant_input_str")) {
+        // Constant string input
+        const constant_str_value = if (node.get("constant_str_value")) |cv| cv.string else "";
+        try writer.print(".{{ .value = \"{s}\" }}", .{constant_str_value});
+    } else if (std.mem.eql(u8, operation, "dynamic_input_num")) {
+        // Dynamic numeric input
+        const allowed_values = if (node.get("allowed_values")) |av| av.array.items else &[_]std.json.Value{};
+        try writer.writeAll(".{ .user_value = null, .allowed_values = &.{");
+        for (allowed_values, 0..) |val, j| {
+            if (j > 0) try writer.writeAll(", ");
+            const allowed_val = switch (val) {
+                .float => |f| f,
+                .integer => |int_val| @as(f64, @floatFromInt(int_val)),
+                else => 0.0,
+            };
+            try writer.print("{d}", .{allowed_val});
+        }
+        try writer.writeAll("} }");
+    } else if (std.mem.eql(u8, operation, "dynamic_input_str")) {
+        // Dynamic string input
+        try writer.writeAll(".{ .user_value = null, .allowed_values = null }");
+    } else {
+        return error.UnknownOperation;
+    }
+
+    try writer.writeAll(" },\n");
 }

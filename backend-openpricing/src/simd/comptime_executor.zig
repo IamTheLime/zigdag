@@ -43,127 +43,135 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const ComptimeNode) type {
             return self.node_values[output_idx];
         }
 
-        /// Evaluate a single node - completely inlined!
+        /// Evaluate a single node - completely inlined using the typed union!
         fn evaluateNode(self: *Self, comptime node: ComptimeNode) !f64 {
-            switch (node.operation) {
-                .dynamic_input_num => {
+            return switch (node.operation) {
+                .dynamic_input_num => |_| {
                     // Dynamic input values are set at runtime by setInput
-                    const idx = comptime comptime_parser.getNodeIndex(nodes, node.id);
+                    const idx = comptime comptime_parser.getNodeIndex(nodes, node.node_id);
                     return self.node_values[idx];
                 },
-                .dynamic_input_str => {
+                .dynamic_input_str => |_| {
                     // Dynamic string input values are set at runtime by setInput
-                    const idx = comptime comptime_parser.getNodeIndex(nodes, node.id);
+                    const idx = comptime comptime_parser.getNodeIndex(nodes, node.node_id);
                     return self.node_values[idx];
                 },
-                .conditional_value_input => {
+                .conditional_value_input => |_| {
                     // Conditional input values are set at runtime by setInput
-                    const idx = comptime comptime_parser.getNodeIndex(nodes, node.id);
+                    const idx = comptime comptime_parser.getNodeIndex(nodes, node.node_id);
                     return self.node_values[idx];
                 },
-                .constant_input_num => {
+                .constant_input_num => |op| {
                     // Constant values are baked into the graph at compile time
-                    return node.constant_value;
+                    return op.value;
                 },
-                .constant_input_str => {
+                .constant_input_str => |_| {
                     // For now, string constants return 0.0 (will be enhanced later)
                     // This is a placeholder for string-based logic
-                    return node.constant_value;
+                    return 0.0;
                 },
-                .add => {
-                    comptime if (node.inputs.len != 2) @compileError("Add requires 2 inputs");
-                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[0]);
-                    const b_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[1]);
+
+                // Binary operations
+                .add => |op| {
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.left_input_node_id);
+                    const b_idx = comptime comptime_parser.getNodeIndex(nodes, op.right_input_node_id);
                     return self.node_values[a_idx] + self.node_values[b_idx];
                 },
-                .subtract => {
-                    comptime if (node.inputs.len != 2) @compileError("Subtract requires 2 inputs");
-                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[0]);
-                    const b_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[1]);
+                .subtract => |op| {
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.left_input_node_id);
+                    const b_idx = comptime comptime_parser.getNodeIndex(nodes, op.right_input_node_id);
                     return self.node_values[a_idx] - self.node_values[b_idx];
                 },
-                .multiply => {
-                    comptime if (node.inputs.len != 2) @compileError("Multiply requires 2 inputs");
-                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[0]);
-                    const b_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[1]);
+                .multiply => |op| {
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.left_input_node_id);
+                    const b_idx = comptime comptime_parser.getNodeIndex(nodes, op.right_input_node_id);
                     return self.node_values[a_idx] * self.node_values[b_idx];
                 },
-                .divide => {
-                    comptime if (node.inputs.len != 2) @compileError("Divide requires 2 inputs");
-                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[0]);
-                    const b_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[1]);
+                .divide => |op| {
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.left_input_node_id);
+                    const b_idx = comptime comptime_parser.getNodeIndex(nodes, op.right_input_node_id);
                     return self.node_values[a_idx] / self.node_values[b_idx];
                 },
-                .power => {
-                    comptime if (node.inputs.len != 2) @compileError("Power requires 2 inputs");
-                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[0]);
-                    const b_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[1]);
+                .power => |op| {
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.left_input_node_id);
+                    const b_idx = comptime comptime_parser.getNodeIndex(nodes, op.right_input_node_id);
                     return std.math.pow(f64, self.node_values[a_idx], self.node_values[b_idx]);
                 },
-                .negate => {
-                    comptime if (node.inputs.len != 1) @compileError("Negate requires 1 input");
-                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[0]);
+                .modulo => |op| {
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.left_input_node_id);
+                    const b_idx = comptime comptime_parser.getNodeIndex(nodes, op.right_input_node_id);
+                    return @mod(self.node_values[a_idx], self.node_values[b_idx]);
+                },
+
+                // Unary operations
+                .negate => |op| {
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.input_node_id);
                     return -self.node_values[a_idx];
                 },
-                .abs => {
-                    comptime if (node.inputs.len != 1) @compileError("Abs requires 1 input");
-                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[0]);
+                .abs => |op| {
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.input_node_id);
                     return @abs(self.node_values[a_idx]);
                 },
-                .sqrt => {
-                    comptime if (node.inputs.len != 1) @compileError("Sqrt requires 1 input");
-                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[0]);
+                .sqrt => |op| {
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.input_node_id);
                     return @sqrt(self.node_values[a_idx]);
                 },
-                .exp => {
-                    comptime if (node.inputs.len != 1) @compileError("Exp requires 1 input");
-                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[0]);
+                .exp => |op| {
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.input_node_id);
                     return @exp(self.node_values[a_idx]);
                 },
-                .log => {
-                    comptime if (node.inputs.len != 1) @compileError("Log requires 1 input");
-                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[0]);
+                .log => |op| {
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.input_node_id);
                     return @log(self.node_values[a_idx]);
                 },
-                .sin => {
-                    comptime if (node.inputs.len != 1) @compileError("Sin requires 1 input");
-                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[0]);
+                .sin => |op| {
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.input_node_id);
                     return @sin(self.node_values[a_idx]);
                 },
-                .cos => {
-                    comptime if (node.inputs.len != 1) @compileError("Cos requires 1 input");
-                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, node.inputs[0]);
+                .cos => |op| {
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.input_node_id);
                     return @cos(self.node_values[a_idx]);
                 },
-                .max => {
-                    comptime if (node.inputs.len < 2) @compileError("Max requires at least 2 inputs");
-                    var result = self.node_values[comptime comptime_parser.getNodeIndex(nodes, node.inputs[0])];
-                    inline for (node.inputs[1..]) |input_id| {
+
+                // Variadic operations
+                .max => |op| {
+                    comptime std.debug.assert(op.node_input_ids.len >= 2);
+                    var result = self.node_values[comptime comptime_parser.getNodeIndex(nodes, op.node_input_ids[0])];
+                    inline for (op.node_input_ids[1..]) |input_id| {
                         const val = self.node_values[comptime comptime_parser.getNodeIndex(nodes, input_id)];
                         result = @max(result, val);
                     }
                     return result;
                 },
-                .min => {
-                    comptime if (node.inputs.len < 2) @compileError("Min requires at least 2 inputs");
-                    var result = self.node_values[comptime comptime_parser.getNodeIndex(nodes, node.inputs[0])];
-                    inline for (node.inputs[1..]) |input_id| {
+                .min => |op| {
+                    comptime std.debug.assert(op.node_input_ids.len >= 2);
+                    var result = self.node_values[comptime comptime_parser.getNodeIndex(nodes, op.node_input_ids[0])];
+                    inline for (op.node_input_ids[1..]) |input_id| {
                         const val = self.node_values[comptime comptime_parser.getNodeIndex(nodes, input_id)];
                         result = @min(result, val);
                     }
                     return result;
                 },
-                .clamp => {
-                    comptime if (node.inputs.len != 3) @compileError("Clamp requires 3 inputs");
-                    const val = self.node_values[comptime comptime_parser.getNodeIndex(nodes, node.inputs[0])];
-                    const min_val = self.node_values[comptime comptime_parser.getNodeIndex(nodes, node.inputs[1])];
-                    const max_val = self.node_values[comptime comptime_parser.getNodeIndex(nodes, node.inputs[2])];
+
+                // Weighted sum
+                .weighted_sum => |op| {
+                    comptime std.debug.assert(op.node_input_ids.len == op.weights.len);
+                    var result: f64 = 0.0;
+                    inline for (op.node_input_ids, op.weights) |input_id, weight| {
+                        const val = self.node_values[comptime comptime_parser.getNodeIndex(nodes, input_id)];
+                        result += val * weight;
+                    }
+                    return result;
+                },
+
+                // Clamp
+                .clamp => |op| {
+                    const val = self.node_values[comptime comptime_parser.getNodeIndex(nodes, op.value)];
+                    const min_val = self.node_values[comptime comptime_parser.getNodeIndex(nodes, op.min)];
+                    const max_val = self.node_values[comptime comptime_parser.getNodeIndex(nodes, op.max)];
                     return @min(@max(val, min_val), max_val);
                 },
-                else => {
-                    @compileError("Operation " ++ @tagName(node.operation) ++ " not implemented in comptime executor");
-                },
-            }
+            };
         }
     };
 }

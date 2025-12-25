@@ -44,22 +44,28 @@ pub fn main() !void {
 
     std.debug.print("Compile-Time Node Information:\n", .{});
     inline for (PRICING_NODES) |node| {
-        std.debug.print("  [{s}] {s}\n", .{ @tagName(node.operation), node.name });
-        std.debug.print("      Description: {s}\n", .{node.description});
-        if (node.operation == .constant_input_num) {
-            std.debug.print("      Value: {d}\n", .{node.constant_value});
+        std.debug.print("  [{s}] {s}\n", .{ @tagName(node.operation), node.metadata.name });
+        std.debug.print("      Description: {s}\n", .{node.metadata.description});
+        switch (node.operation) {
+            .constant_input_num => |op| {
+                std.debug.print("      Value: {d}\n", .{op.value});
+            },
+            .dynamic_input_num => |op| {
+                if (op.allowed_values.len > 0) {
+                    std.debug.print("      Allowed values: ", .{});
+                    inline for (op.allowed_values, 0..) |val, i| {
+                        if (i > 0) std.debug.print(", ", .{});
+                        std.debug.print("{d}", .{val});
+                    }
+                    std.debug.print("\n", .{});
+                }
+            },
+            else => {},
         }
-        if (node.operation == .dynamic_input_num and node.allowed_values.len > 0) {
-            std.debug.print("      Allowed values: ", .{});
-            inline for (node.allowed_values, 0..) |val, i| {
-                if (i > 0) std.debug.print(", ", .{});
-                std.debug.print("{d}", .{val});
-            }
-            std.debug.print("\n", .{});
-        }
-        if (node.inputs.len > 0) {
+        const deps = comptime openpricing.comptime_parser.getDependencies(node.operation);
+        if (comptime deps.len > 0) {
             std.debug.print("      Inputs: ", .{});
-            inline for (node.inputs, 0..) |input, i| {
+            inline for (deps, 0..) |input, i| {
                 if (i > 0) std.debug.print(", ", .{});
                 std.debug.print("{s}", .{input});
             }
@@ -74,17 +80,17 @@ pub fn main() !void {
     // The example sets all dynamic input nodes to demonstrate the model
     inline for (PRICING_NODES) |node| {
         if (node.operation == .dynamic_input_num) {
-            std.debug.print("  Setting {s} = 100.0\n", .{node.name});
-            try executor.setInput(node.id, 100.0);
+            std.debug.print("  Setting {s} = 100.0\n", .{node.metadata.name});
+            try executor.setInput(node.node_id, 100.0);
         }
     }
 
     // Execute - this is pure computation, fully inlined by the compiler!
     // Use the last node as output (typically the final result)
     const output_node = PRICING_NODES[PRICING_NODES.len - 1];
-    const result = try executor.getOutput(output_node.id);
+    const result = try executor.getOutput(output_node.node_id);
 
-    std.debug.print("  {s}: ${d:.2}\n", .{ output_node.name, result });
+    std.debug.print("  {s}: ${d:.2}\n", .{ output_node.metadata.name, result });
     std.debug.print("\n", .{});
 
     std.debug.print("Performance Characteristics:\n", .{});
