@@ -37,10 +37,12 @@ export function createNode(
       hasValue: def.hasValue,
       hasWeights: def.hasWeights,
       hasAllowedValues: def.hasAllowedValues,
+      hasConditionalValues: def.hasConditionalValues,
       // Default values
       value: def.hasValue ? 0.0 : undefined,
       stringValue: undefined,
       allowedValues: def.hasAllowedValues ? [] : undefined,
+      conditionalValues: def.hasConditionalValues ? {} : undefined,
       weights: def.hasWeights ? [] : undefined,
     },
   };
@@ -50,7 +52,7 @@ export function createNode(
  * Validate node connections
  */
 export function canConnect(
-  sourceOperation: OperationType,
+  _sourceOperation: OperationType,
   targetOperation: OperationType,
   currentInputCount: number
 ): { valid: boolean; reason?: string } {

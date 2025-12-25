@@ -12,5 +12,4 @@ pub const comptime_executor = @import("simd/comptime_executor.zig");
 
 // Main API
 pub const ComptimeExecutorFromNodes = comptime_executor.ComptimeExecutorFromNodes;
-pub const ComptimeNode = comptime_parser.ComptimeNode;
 pub const OperationType = node.OperationType;

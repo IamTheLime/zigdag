@@ -24,6 +24,7 @@ pub const OperationType = enum {
     max,
     min,
     clamp,
+    funnel, // final output node (passes through a single input)
 
     // Input/constant nodes
     conditional_value_input,
@@ -107,6 +108,7 @@ pub const NodeOperation = union(OperationType) {
     max: VariadicInputs,
     min: VariadicInputs,
     clamp: ClampInputs,
+    funnel: UnaryInput,
 
     // Input/constant nodes
     conditional_value_input: ConditionalValueInput,
@@ -166,7 +168,7 @@ pub const PricingNode = struct {
     pub fn expectedDependencyNodeCount(self: PricingNode) i32 {
         return switch (self.operation) {
             .constant_input_num, .constant_input_str, .dynamic_input_num, .dynamic_input_str => 0,
-            .conditional_value_input => 1,
+            .conditional_value_input, .funnel => 1,
             .negate, .abs, .sqrt, .exp, .log, .sin, .cos => 1,
             .add, .subtract, .multiply, .divide, .power, .modulo => 2,
             .clamp => 3, // value, min, max

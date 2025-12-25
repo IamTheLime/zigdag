@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { OperationType } from '../types/pricing';
 import { NODE_CATEGORIES, getNodesByCategory } from '../config/nodeDefinitions';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronRight, Info } from 'lucide-react';
+import { cn } from '@/utils/cn';
 
 interface NodePaletteProps {
   onNodeCreate: (operation: OperationType) => void;
@@ -17,118 +21,97 @@ export default function NodePalette({ onNodeCreate }: NodePaletteProps) {
   }, []);
 
   return (
-    <div
-      style={{
-        width: '280px',
-        backgroundColor: '#f8f9fa',
-        borderRight: '1px solid #dee2e6',
-        padding: '16px',
-        overflow: 'auto',
-        height: '100%',
-      }}
-    >
-      <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>
-        Node Palette
-      </h3>
-
-      <div style={{ fontSize: '12px', color: '#666', marginBottom: '16px' }}>
-        Drag nodes onto the canvas to build your pricing model
+    <div className="w-[300px] border-r bg-muted/30 p-4 overflow-auto h-full">
+      <div className="mb-6">
+        <h3 className="text-lg font-bold mb-2">Node Palette</h3>
+        <p className="text-xs text-muted-foreground">
+          Drag nodes onto the canvas or click to add them
+        </p>
       </div>
 
-      {categorizedNodes.map((category) => (
-        <div key={category.id} style={{ marginBottom: '12px' }}>
-          {/* Category header */}
-          <div
-            onClick={() =>
-              setExpandedCategory(expandedCategory === category.id ? '' : category.id)
-            }
-            style={{
-              backgroundColor: category.color,
-              color: 'white',
-              padding: '8px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              fontSize: '13px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              userSelect: 'none',
-            }}
-          >
-            <span>{category.label}</span>
-            <span style={{ fontSize: '16px' }}>
-              {expandedCategory === category.id ? '▼' : '▶'}
-            </span>
-          </div>
+      <div className="space-y-3">
+        {categorizedNodes.map((category) => (
+          <div key={category.id}>
+            {/* Category header */}
+            <Button
+              onClick={() =>
+                setExpandedCategory(expandedCategory === category.id ? '' : category.id)
+              }
+              variant="secondary"
+              className="w-full justify-between h-auto py-2 px-3"
+              style={{
+                backgroundColor: category.color,
+                color: 'white',
+              }}
+            >
+              <span className="font-semibold text-sm">{category.label}</span>
+              {expandedCategory === category.id ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </Button>
 
-          {/* Category nodes */}
-          {expandedCategory === category.id && (
-            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {category.nodes.map((node) => (
-                <div
-                  key={node.operation}
-                  onClick={() => onNodeCreate(node.operation)}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData('application/reactflow', node.operation);
-                    e.dataTransfer.effectAllowed = 'move';
-                  }}
-                  style={{
-                    backgroundColor: 'white',
-                    border: `2px solid ${node.color}`,
-                    borderRadius: '6px',
-                    padding: '10px',
-                    cursor: 'grab',
-                    transition: 'all 0.2s',
-                    userSelect: 'none',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateX(4px)';
-                    e.currentTarget.style.boxShadow = `0 2px 8px ${node.color}40`;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateX(0)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {node.icon && <span style={{ fontSize: '18px' }}>{node.icon}</span>}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#333' }}>
-                        {node.label}
+            {/* Category nodes */}
+            {expandedCategory === category.id && (
+              <div className="mt-2 space-y-2">
+                {category.nodes.map((node) => (
+                  <Card
+                    key={node.operation}
+                    onClick={() => onNodeCreate(node.operation)}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('application/reactflow', node.operation);
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    className={cn(
+                      'cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:translate-x-1',
+                      'border-2'
+                    )}
+                    style={{ borderColor: node.color }}
+                  >
+                    <CardHeader className="p-3 pb-2">
+                      <div className="flex items-start gap-2">
+                        {node.icon && <span className="text-lg">{node.icon}</span>}
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-xs font-semibold leading-tight">
+                            {node.label}
+                          </CardTitle>
+                        </div>
                       </div>
-                      <div style={{ fontSize: '10px', color: '#666', marginTop: '2px' }}>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0">
+                      <CardDescription className="text-xs leading-relaxed">
                         {node.description}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+                      </CardDescription>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
       {/* Help section */}
-      <div
-        style={{
-          marginTop: '24px',
-          padding: '12px',
-          backgroundColor: '#e3f2fd',
-          borderRadius: '6px',
-          fontSize: '11px',
-          color: '#1976d2',
-        }}
-      >
-        <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>💡 Tips:</div>
-        <ul style={{ margin: 0, paddingLeft: '16px' }}>
-          <li>Drag nodes onto canvas</li>
-          <li>Connect nodes with edges</li>
-          <li>Edit node values inline</li>
-          <li>Save to playground to test</li>
-        </ul>
-      </div>
+      <Card className="mt-6 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+        <CardHeader className="p-3 pb-2">
+          <div className="flex items-center gap-2">
+            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <CardTitle className="text-xs font-semibold text-blue-900 dark:text-blue-100">
+              Quick Tips
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="p-3 pt-0">
+          <ul className="text-xs space-y-1 text-blue-800 dark:text-blue-200">
+            <li>• Drag nodes onto canvas</li>
+            <li>• Connect nodes with edges</li>
+            <li>• Edit node values inline</li>
+            <li>• Save to playground to test</li>
+          </ul>
+        </CardContent>
+      </Card>
     </div>
   );
 }

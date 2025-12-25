@@ -6,26 +6,31 @@
 Pricing Model Information:
   - JSON parsed at: COMPILE TIME
   - Graph validated at: COMPILE TIME
-  - Nodes in model: 4
+  - Nodes in model: 6
   - Node storage: STACK (no heap!)
   - Execution: FULLY INLINED
 
 Compile-Time Node Information:
-  [constant_input_num] Constant (Number)
-      Description: This is the whatever
-      Value: 33.3
+  [constant_input_str] Constant (String)
+      Description: Hardcoded string value
+  [conditional_value_input] Conditional Value
+      Description: Maps input values to outputs
+      Inputs: constant_input_str_1
+  [multiply] Multiply
+      Description: Multiplication (a × b)
+      Inputs: conditional_value_input_2, constant_input_num_4
   [constant_input_num] Constant (Number)
       Description: Hardcoded numeric value
-      Value: 100
-  [add] Add
-      Description: Addition (a + b)
-      Inputs: constant_input_num_2, constant_input_num_1
-  [add] Add
-      Description: Addition (a + b)
-      Inputs: constant_input_num_2, add_3
+      Value: 200
+  [multiply] Multiply
+      Description: Multiplication (a × b)
+      Inputs: multiply_3, constant_input_num_6
+  [constant_input_num] Constant (Number)
+      Description: Hardcoded numeric value
+      Value: 0.8
 
 Running example calculation...
-  Add: $233.30
+  Constant (Number): $0.80
 
 Performance Characteristics:
   - JSON parsing: ZERO (done at compile time)

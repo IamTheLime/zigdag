@@ -77,16 +77,22 @@ pub fn main() !void {
     std.debug.print("Running example calculation...\n", .{});
 
     // Set input values - this is the ONLY runtime operation besides the math!
-    // The example sets all dynamic input nodes to demonstrate the model
+    // All dynamic numeric inputs are set to 100.0 for testing
     inline for (PRICING_NODES) |node| {
         if (node.operation == .dynamic_input_num) {
             std.debug.print("  Setting {s} = 100.0\n", .{node.metadata.name});
             try executor.setInput(node.node_id, 100.0);
         }
+        // Conditional value inputs are also set to 100.0 for testing
+        // (In production, these would be computed from the conditional_values map)
+        if (node.operation == .conditional_value_input) {
+            std.debug.print("  Setting {s} = 100.0 (test default)\n", .{node.metadata.name});
+            try executor.setInput(node.node_id, 100.0);
+        }
     }
 
     // Execute - this is pure computation, fully inlined by the compiler!
-    // Use the last node as output (typically the final result)
+    // The last node in the array is always the output (should be a funnel node)
     const output_node = PRICING_NODES[PRICING_NODES.len - 1];
     const result = try executor.getOutput(output_node.node_id);
 

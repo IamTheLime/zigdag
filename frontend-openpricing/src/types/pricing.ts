@@ -24,6 +24,7 @@ export type OperationType =
   | 'max'
   | 'min'
   | 'clamp'
+  | 'funnel'
   // Input/constant nodes
   | 'dynamic_input_num'
   | 'dynamic_input_str'
@@ -38,6 +39,10 @@ export interface NodeMetadata {
   position_y: number;
 }
 
+export interface ConditionalValueMap {
+  [key: string]: number;
+}
+
 export interface PricingNode {
   id: string;
   operation: OperationType;
@@ -45,6 +50,7 @@ export interface PricingNode {
   constant_value: number;
   constant_str_value?: string;
   allowed_values?: number[];
+  conditional_values?: ConditionalValueMap;
   inputs: string[];
   metadata: NodeMetadata;
 }
@@ -61,6 +67,7 @@ export interface NodeConfig {
   hasValue?: boolean; // Whether it has a constant_value
   hasWeights?: boolean; // Whether it uses weights
   hasAllowedValues?: boolean; // Whether it has allowed_values
+  hasConditionalValues?: boolean; // Whether it has conditional_values
   color: string; // Node color in UI
   icon?: string; // Optional icon
 }

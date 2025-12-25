@@ -1,65 +1,123 @@
 {
   "nodes": [
     {
-      "id": "constant_input_num_1",
-      "operation": "constant_input_num",
+      "id": "constant_input_str_1",
+      "operation": "constant_input_str",
       "weights": [],
-      "constant_value": 33.3,
+      "constant_value": 0,
+      "constant_str_value": "turtle",
       "allowed_values": [],
+      "conditional_values": {},
       "inputs": [],
       "metadata": {
-        "name": "Constant (Number)",
-        "description": "This is the whatever",
-        "position_x": 798.5,
-        "position_y": 845
+        "name": "Constant (String)",
+        "description": "Hardcoded string value",
+        "position_x": 918.5,
+        "position_y": 523
       }
     },
     {
-      "id": "constant_input_num_2",
+      "id": "conditional_value_input_2",
+      "operation": "conditional_value_input",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "conditional_values": {
+        "cat": 300,
+        "turtle": 150,
+        "unicorn": 500
+      },
+      "inputs": [
+        "constant_input_str_1"
+      ],
+      "metadata": {
+        "name": "Conditional Value",
+        "description": "Maps input values to outputs",
+        "position_x": 1425.391508270835,
+        "position_y": 714.3529052993907
+      }
+    },
+    {
+      "id": "multiply_3",
+      "operation": "multiply",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [
+        "conditional_value_input_2",
+        "constant_input_num_4"
+      ],
+      "metadata": {
+        "name": "Multiply",
+        "description": "Multiplication (a × b)",
+        "position_x": 2046.1268941801138,
+        "position_y": 1209.8160039562565
+      }
+    },
+    {
+      "id": "constant_input_num_4",
       "operation": "constant_input_num",
       "weights": [],
-      "constant_value": 100,
+      "constant_value": 200,
       "allowed_values": [],
+      "conditional_values": {},
       "inputs": [],
       "metadata": {
         "name": "Constant (Number)",
         "description": "Hardcoded numeric value",
-        "position_x": 796.7616692821439,
-        "position_y": 1157.370066667581
+        "position_x": 927.1167125762945,
+        "position_y": 1396.0716229087666
       }
     },
     {
-      "id": "add_3",
-      "operation": "add",
+      "id": "multiply_5",
+      "operation": "multiply",
       "weights": [],
       "constant_value": 0,
       "allowed_values": [],
+      "conditional_values": {},
       "inputs": [
-        "constant_input_num_2",
-        "constant_input_num_1"
+        "multiply_3",
+        "constant_input_num_6"
       ],
       "metadata": {
-        "name": "Add",
-        "description": "Addition (a + b)",
-        "position_x": 1164.0295343464709,
-        "position_y": 1040.275806314295
+        "name": "Multiply",
+        "description": "Multiplication (a × b)",
+        "position_x": 2817.1312131402474,
+        "position_y": 1464.642659193502
       }
     },
     {
-      "id": "add_4",
-      "operation": "add",
+      "id": "constant_input_num_6",
+      "operation": "constant_input_num",
+      "weights": [],
+      "constant_value": 0.8,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "Constant (Number)",
+        "description": "Hardcoded numeric value",
+        "position_x": 1592.350750170764,
+        "position_y": 2025.893940903269
+      }
+    },
+    {
+      "id": "funnel_output",
+      "operation": "funnel",
       "weights": [],
       "constant_value": 0,
       "allowed_values": [],
+      "conditional_values": {},
       "inputs": [
-        "constant_input_num_2",
-        "add_3"
+        "multiply_5"
       ],
       "metadata": {
-        "name": "Add",
-        "description": "Addition (a + b)",
-        "position_x": 1537.7374058840178,
-        "position_y": 1277.4567247207897
+        "name": "Final Output",
+        "description": "The final output of the pricing model",
+        "position_x": 3400,
+        "position_y": 1500
       }
     }
   ]

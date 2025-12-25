@@ -133,6 +133,11 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const PricingNode) type {
                     const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.input_node_id);
                     return @cos(self.node_values[a_idx]);
                 },
+                .funnel => |op| {
+                    // Funnel just passes through its input value
+                    const a_idx = comptime comptime_parser.getNodeIndex(nodes, op.input_node_id);
+                    return self.node_values[a_idx];
+                },
 
                 // Variadic operations
                 .max => |op| {

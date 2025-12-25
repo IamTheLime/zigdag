@@ -56,6 +56,7 @@ export const NODE_DEFINITIONS: Record<OperationType, NodeConfig> = {
     description: 'Maps input values to outputs',
     category: 'input',
     inputCount: 1,
+    hasConditionalValues: true,
     color: '#FF9800',
     icon: '🔀',
   },
@@ -218,6 +219,15 @@ export const NODE_DEFINITIONS: Record<OperationType, NodeConfig> = {
     inputCount: 3,
     color: '#FF5722',
     icon: '⊣⊢',
+  },
+  funnel: {
+    operation: 'funnel',
+    label: 'Final Output',
+    description: 'Marks the final output of the pricing model',
+    category: 'unary',
+    inputCount: 1,
+    color: '#FF6B6B',
+    icon: '🎯',
   },
 };
 

@@ -46,13 +46,13 @@ pub fn main() !void {
         \\// This file is generated at build time by tools/json_to_zig.zig
         \\
         \\const openpricing = @import("openpricing");
-        \\const ComptimeNode = openpricing.comptime_parser.ComptimeNode;
+        \\const PricingNode = openpricing.node.PricingNode;
         \\const NodeOperation = openpricing.node.NodeOperation;
         \\const NodeMetadata = openpricing.node.PricingNode.NodeMetadata;
         \\
         \\/// Compile-time pricing nodes generated from JSON
         \\/// These are fully static and live in the .rodata section
-        \\pub const nodes = &[_]ComptimeNode{
+        \\pub const nodes = &[_]PricingNode{
         \\
     );
 
@@ -143,7 +143,8 @@ fn writeOperation(writer: anytype, operation: []const u8, node: std.json.ObjectM
         std.mem.eql(u8, operation, "exp") or
         std.mem.eql(u8, operation, "log") or
         std.mem.eql(u8, operation, "sin") or
-        std.mem.eql(u8, operation, "cos"))
+        std.mem.eql(u8, operation, "cos") or
+        std.mem.eql(u8, operation, "funnel"))
     {
         // Unary operations
         const inputs = node.get("inputs").?.array.items;

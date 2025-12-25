@@ -4,7 +4,6 @@ const OperationType = node_module.OperationType;
 const NodeOperation = node_module.NodeOperation;
 const PricingNode = node_module.PricingNode;
 
-
 /// Helper function to define nodes at compile time manually
 pub fn defineComptimeNodes(comptime nodes: []const PricingNode) []const PricingNode {
     return nodes;
@@ -20,7 +19,7 @@ pub fn getDependencies(comptime operation: NodeOperation) []const []const u8 {
         },
 
         // Unary operations
-        .negate, .abs, .sqrt, .exp, .log, .sin, .cos => |op| &[_][]const u8{
+        .negate, .abs, .sqrt, .exp, .log, .sin, .cos, .funnel => |op| &[_][]const u8{
             op.input_node_id,
         },
 
