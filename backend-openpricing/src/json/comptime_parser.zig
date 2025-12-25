@@ -4,15 +4,9 @@ const OperationType = node_module.OperationType;
 const NodeOperation = node_module.NodeOperation;
 const PricingNode = node_module.PricingNode;
 
-/// Compile-time pricing node - uses the typed NodeOperation union
-pub const ComptimeNode = struct {
-    node_id: []const u8,
-    operation: NodeOperation,
-    metadata: PricingNode.NodeMetadata,
-};
 
 /// Helper function to define nodes at compile time manually
-pub fn defineComptimeNodes(comptime nodes: []const ComptimeNode) []const ComptimeNode {
+pub fn defineComptimeNodes(comptime nodes: []const PricingNode) []const PricingNode {
     return nodes;
 }
 
@@ -54,7 +48,7 @@ pub fn getDependencies(comptime operation: NodeOperation) []const []const u8 {
 }
 
 /// Find node index by ID at compile time
-pub fn getNodeIndex(comptime nodes: []const ComptimeNode, comptime id: []const u8) usize {
+pub fn getNodeIndex(comptime nodes: []const PricingNode, comptime id: []const u8) usize {
     inline for (nodes, 0..) |node, i| {
         if (std.mem.eql(u8, node.node_id, id)) {
             return i;
@@ -65,7 +59,7 @@ pub fn getNodeIndex(comptime nodes: []const ComptimeNode, comptime id: []const u
 
 /// Perform topological sort at compile time using Kahn's algorithm
 /// This ensures nodes are executed in dependency order (DAG)
-pub fn computeExecutionOrder(comptime nodes: []const ComptimeNode) []const usize {
+pub fn computeExecutionOrder(comptime nodes: []const PricingNode) []const usize {
     comptime {
         const n = nodes.len;
 

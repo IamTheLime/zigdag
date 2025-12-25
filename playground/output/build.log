@@ -1,1 +1,25 @@
 zig build
+install
++- install openpricing-cli
+   +- compile exe openpricing-cli Debug native 1 errors
+.zig-cache/o/a2b0764813c5093694699a371322b1ff/generated_nodes.zig:6:49: error: root source file struct 'json.comptime_parser' has no member named 'ComptimeNode'
+const ComptimeNode = openpricing.comptime_parser.ComptimeNode;
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~
+src/json/comptime_parser.zig:1:1: note: struct declared here
+const std = @import("std");
+^~~~~
+referenced by:
+    nodes: .zig-cache/o/a2b0764813c5093694699a371322b1ff/generated_nodes.zig:12:23
+    PRICING_NODES: src/main.zig:15:32
+    7 reference(s) hidden; use '-freference-trace=9' to see all references
+error: the following command failed with 1 compilation errors:
+/home/tiago/bin/zig/zig build-exe -ODebug --dep openpricing --dep generated_nodes -Mroot=/home/tiago/repos/openpricing/backend-openpricing/src/main.zig -Mopenpricing=/home/tiago/repos/openpricing/backend-openpricing/src/root.zig --dep openpricing -Mgenerated_nodes=.zig-cache/o/a2b0764813c5093694699a371322b1ff/generated_nodes.zig --cache-dir .zig-cache --global-cache-dir /home/tiago/.cache/zig --name openpricing-cli --zig-lib-dir /home/tiago/bin/zig/lib/ --listen=-
+
+Build Summary: 2/5 steps succeeded; 1 failed
+install transitive failure
++- install openpricing-cli transitive failure
+   +- compile exe openpricing-cli Debug native 1 errors
+
+error: the following build command failed with exit code 1:
+.zig-cache/o/ecd1dab77c4a628306489e617d35eb19/build /home/tiago/bin/zig/zig /home/tiago/bin/zig/lib /home/tiago/repos/openpricing/backend-openpricing .zig-cache /home/tiago/.cache/zig --seed 0xf577fadc -Z1176810b92af0f21
+make: *** [Makefile:12: build] Error 1

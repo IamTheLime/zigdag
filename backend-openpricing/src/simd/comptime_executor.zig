@@ -1,11 +1,12 @@
 const std = @import("std");
 const comptime_parser = @import("../json/comptime_parser.zig");
-const OperationType = @import("../core/node.zig").OperationType;
-const ComptimeNode = comptime_parser.ComptimeNode;
+const corenode = @import("../core/node.zig");
+const OperationType = corenode.OperationType;
+const PricingNode = corenode.PricingNode;
 
 /// Compile-time executor that works with static nodes from JSON
 /// All graph structure is resolved at compile time - only values are runtime!
-pub fn ComptimeExecutorFromNodes(comptime nodes: []const ComptimeNode) type {
+pub fn ComptimeExecutorFromNodes(comptime nodes: []const PricingNode) type {
     const node_count = nodes.len;
     const execution_order = comptime_parser.computeExecutionOrder(nodes);
 
@@ -44,7 +45,7 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const ComptimeNode) type {
         }
 
         /// Evaluate a single node - completely inlined using the typed union!
-        fn evaluateNode(self: *Self, comptime node: ComptimeNode) !f64 {
+        fn evaluateNode(self: *Self, comptime node: PricingNode) !f64 {
             return switch (node.operation) {
                 .dynamic_input_num => |_| {
                     // Dynamic input values are set at runtime by setInput
