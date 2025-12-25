@@ -84,9 +84,9 @@ test_pricing_model() {
     fi
     cd ..
     
-    # Run the compiled binary
+    # Run the benchmark
     print_header "Executing Pricing Model"
-    if "${BACKEND_DIR}/zig-out/bin/openpricing-cli" 2>&1 | tee "${OUTPUT_DIR}/execution.log"; then
+    if "${BACKEND_DIR}/zig-out/bin/openpricing-benchmark" 2>&1 | tee "${OUTPUT_DIR}/execution.log"; then
         print_success "Execution successful!"
     else
         print_error "Execution failed! Check ${OUTPUT_DIR}/execution.log"

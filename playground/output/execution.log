@@ -6,7 +6,7 @@
 Pricing Model Information:
   - JSON parsed at: COMPILE TIME
   - Graph validated at: COMPILE TIME
-  - Nodes in model: 13
+  - Nodes in model: 15
   - Node storage: STACK (no heap!)
   - Execution: FULLY INLINED
 
@@ -46,12 +46,18 @@ Compile-Time Node Information:
       Description: Hardcoded string value
   [funnel] Final Output
       Description: Marks the final output of the pricing model
-      Inputs: subtract_10
+      Inputs: multiply_15
+  [multiply] Multiply
+      Description: Multiplication (a × b)
+      Inputs: subtract_10, constant_input_num_16
+  [constant_input_num] Constant (Number)
+      Description: Hardcoded numeric value
+      Value: 200
 
 Running example calculation...
   Setting Dynamic Input (Number) = 100.0
   Setting Dynamic Input (Number) = 100.0
-  Final Output: $37474.00
+  Final Output: $7494800.00
 
 Performance Characteristics:
   - JSON parsing: ZERO (done at compile time)

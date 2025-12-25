@@ -143,8 +143,8 @@
       "metadata": {
         "name": "Subtract",
         "description": "Subtraction (a - b)",
-        "position_x": 3050.6071966183017,
-        "position_y": 1469.9574712959939
+        "position_x": 3032.6071966183017,
+        "position_y": 1533.9574712959939
       }
     },
     {
@@ -210,13 +210,46 @@
       "allowed_values": [],
       "conditional_values": {},
       "inputs": [
-        "subtract_10"
+        "multiply_15"
       ],
       "metadata": {
         "name": "Final Output",
         "description": "Marks the final output of the pricing model",
-        "position_x": 3497.525190357316,
-        "position_y": 1647.1677609524581
+        "position_x": 3919.525190357316,
+        "position_y": 1541.1677609524581
+      }
+    },
+    {
+      "id": "multiply_15",
+      "operation": "multiply",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [
+        "subtract_10",
+        "constant_input_num_16"
+      ],
+      "metadata": {
+        "name": "Multiply",
+        "description": "Multiplication (a × b)",
+        "position_x": 3522.096662525285,
+        "position_y": 1635.5963193020675
+      }
+    },
+    {
+      "id": "constant_input_num_16",
+      "operation": "constant_input_num",
+      "weights": [],
+      "constant_value": 200,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "Constant (Number)",
+        "description": "Hardcoded numeric value",
+        "position_x": 2972.096662525285,
+        "position_y": 1929.5963193020675
       }
     }
   ]

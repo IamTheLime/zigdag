@@ -33,31 +33,52 @@ pub fn build(b: *std.Build) void {
         },
     });
 
-    // CLI Executable
-    const exe = b.addExecutable(.{
-        .name = "openpricing-cli",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "openpricing", .module = mod },
-                .{ .name = "generated_nodes", .module = generated_mod },
-            },
-        }),
+    // Shared Library (for FFI from Python/Node.js/etc)
+    const lib_module = b.createModule(.{
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "openpricing", .module = mod },
+            .{ .name = "generated_nodes", .module = generated_mod },
+        },
     });
 
-    b.installArtifact(exe);
+    const lib = b.addLibrary(.{
+        .name = "openpricing",
+        .root_module = lib_module,
+        .linkage = .dynamic, // Shared library
+    });
 
-    // Run Step
-    const run_cmd = b.addRunArtifact(exe);
+    b.installArtifact(lib);
+
+    // Benchmark Executable
+    const benchmark_module = b.createModule(.{
+        .root_source_file = b.path("benchmark/benchmark.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "openpricing", .module = mod },
+            .{ .name = "generated_nodes", .module = generated_mod },
+        },
+    });
+
+    const benchmark_exe = b.addExecutable(.{
+        .name = "openpricing-benchmark",
+        .root_module = benchmark_module,
+    });
+
+    b.installArtifact(benchmark_exe);
+
+    // Run Step (runs benchmark)
+    const run_cmd = b.addRunArtifact(benchmark_exe);
     run_cmd.step.dependOn(b.getInstallStep());
 
     if (b.args) |args| {
         run_cmd.addArgs(args);
     }
 
-    const run_step = b.step("run", "Run the CLI application");
+    const run_step = b.step("run", "Run the benchmark");
     run_step.dependOn(&run_cmd.step);
 
     // Tests
@@ -71,17 +92,35 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_lib_tests.step);
 
     // Check Step (for ZLS)
-    const exe_check = b.addExecutable(.{
-        .name = "openpricing-cli",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "openpricing", .module = mod },
-                .{ .name = "generated_nodes", .module = generated_mod },
-            },
-        }),
+    const lib_check_module = b.createModule(.{
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "openpricing", .module = mod },
+            .{ .name = "generated_nodes", .module = generated_mod },
+        },
+    });
+
+    const lib_check = b.addLibrary(.{
+        .name = "openpricing",
+        .root_module = lib_check_module,
+        .linkage = .dynamic,
+    });
+
+    const benchmark_check_module = b.createModule(.{
+        .root_source_file = b.path("benchmark/benchmark.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "openpricing", .module = mod },
+            .{ .name = "generated_nodes", .module = generated_mod },
+        },
+    });
+
+    const benchmark_check = b.addExecutable(.{
+        .name = "openpricing-benchmark",
+        .root_module = benchmark_check_module,
     });
 
     const test_check = b.addTest(.{
@@ -89,6 +128,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const check = b.step("check", "Check if openpricing compiles");
-    check.dependOn(&exe_check.step);
+    check.dependOn(&lib_check.step);
+    check.dependOn(&benchmark_check.step);
     check.dependOn(&test_check.step);
 }
