@@ -60,6 +60,7 @@ pub fn getNodeIndex(comptime nodes: []const PricingNode, comptime id: []const u8
 /// This ensures nodes are executed in dependency order (DAG)
 pub fn computeExecutionOrder(comptime nodes: []const PricingNode) []const usize {
     comptime {
+        @setEvalBranchQuota(200000); // Increase quota for complex graphs
         const n = nodes.len;
 
         // Calculate in-degree for each node (how many dependencies it has)

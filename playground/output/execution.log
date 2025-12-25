@@ -6,34 +6,52 @@
 Pricing Model Information:
   - JSON parsed at: COMPILE TIME
   - Graph validated at: COMPILE TIME
-  - Nodes in model: 7
+  - Nodes in model: 13
   - Node storage: STACK (no heap!)
   - Execution: FULLY INLINED
 
 Compile-Time Node Information:
+  [dynamic_input_num] Dynamic Input (Number)
+      Description: User-provided numeric input at runtime
+  [dynamic_input_num] Dynamic Input (Number)
+      Description: User-provided numeric input at runtime
   [constant_input_num] Constant (Number)
       Description: Hardcoded numeric value
-      Value: 100
+      Value: 300
+  [constant_input_num] Constant (Number)
+      Description: Hardcoded numeric value
+      Value: 33
+  [constant_input_num] Constant (Number)
+      Description: Hardcoded numeric value
+      Value: 125
+  [multiply] Multiply
+      Description: Multiplication (a × b)
+      Inputs: constant_input_num_6, dynamic_input_num_1
+  [multiply] Multiply
+      Description: Multiplication (a × b)
+      Inputs: constant_input_num_3, add_11
+  [divide] Divide
+      Description: Division (a ÷ b)
+      Inputs: multiply_8, dynamic_input_num_2
+  [subtract] Subtract
+      Description: Subtraction (a - b)
+      Inputs: divide_9, conditional_value_input_12
+  [add] Add
+      Description: Addition (a + b)
+      Inputs: multiply_7, constant_input_num_5
+  [conditional_value_input] Conditional Value
+      Description: Maps string input to numeric output
+      Inputs: constant_input_str_13
   [constant_input_str] Constant (String)
       Description: Hardcoded string value
-  [multiply] Multiply
-      Description: Multiplication (a × b)
-      Inputs: constant_input_num_1, conditional_value_input_4
-  [conditional_value_input] Conditional Value
-      Description: Maps input values to outputs
-      Inputs: constant_input_str_2
   [funnel] Final Output
       Description: Marks the final output of the pricing model
-      Inputs: multiply_7
-  [constant_input_num] Constant (Number)
-      Description: Hardcoded numeric value
-      Value: 0.8
-  [multiply] Multiply
-      Description: Multiplication (a × b)
-      Inputs: multiply_3, constant_input_num_6
+      Inputs: subtract_10
 
 Running example calculation...
-  Multiply: $16000.00
+  Setting Dynamic Input (Number) = 100.0
+  Setting Dynamic Input (Number) = 100.0
+  Final Output: $37474.00
 
 Performance Characteristics:
   - JSON parsing: ZERO (done at compile time)

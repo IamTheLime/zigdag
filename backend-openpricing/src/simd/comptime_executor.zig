@@ -46,6 +46,7 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const PricingNode) type {
 
         /// Evaluate a single node - completely inlined using the typed union!
         fn evaluateNode(self: *Self, comptime node: PricingNode) !f64 {
+            @setEvalBranchQuota(10000); // Increase quota for complex conditional lookups
             return switch (node.operation) {
                 .dynamic_input_num => |_| {
                     // Dynamic input values are set at runtime by setInput
