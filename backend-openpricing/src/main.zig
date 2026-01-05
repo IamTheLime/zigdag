@@ -16,6 +16,16 @@ const generated = @import("generated_nodes");
 const PRICING_NODES = generated.nodes;
 const PRICING_EXECUTOR = openpricing.ComptimeExecutorFromNodes(PRICING_NODES);
 
+// Find the funnel node ID at compile time
+const FUNNEL_NODE_ID = blk: {
+    for (PRICING_NODES) |node| {
+        if (node.operation == .funnel) {
+            break :blk node.node_id;
+        }
+    }
+    @compileError("No funnel node found in pricing model! Every model must have a funnel node as the final output.");
+};
+
 // Thread-local executor instance
 threadlocal var executor: PRICING_EXECUTOR = undefined;
 threadlocal var executor_initialized: bool = false;
@@ -48,24 +58,35 @@ export fn pricing_set_input(node_id: [*:0]const u8, value: f64) c_int {
     return -3; // Node not found
 }
 
-/// Calculate the final pricing result
+/// Calculate the final pricing result (using the funnel node)
 /// @param result: Pointer to store the result
 /// Returns 0 on success, non-zero on error
 export fn pricing_calculate(result: *f64) c_int {
     if (!executor_initialized) return -1;
 
-    // Find the funnel node (the final output node)
-    const output_node = comptime blk: {
-        for (PRICING_NODES) |node| {
-            if (node.operation == .funnel) {
-                break :blk node;
-            }
-        }
-        @compileError("No funnel node found in pricing model! Every model must have a funnel node as the final output.");
-    };
-    result.* = executor.getOutput(output_node.node_id) catch return -2;
+    result.* = executor.getOutput(FUNNEL_NODE_ID) catch return -2;
 
     return 0;
+}
+
+/// Calculate result from a specific node by ID
+/// @param node_id: C string containing the node ID
+/// @param result: Pointer to store the result
+/// Returns 0 on success, non-zero on error
+export fn pricing_calculate_node(node_id: [*:0]const u8, result: *f64) c_int {
+    if (!executor_initialized) return -1;
+
+    const id = std.mem.span(node_id);
+
+    // Find the node with this ID
+    inline for (PRICING_NODES) |node| {
+        if (std.mem.eql(u8, node.node_id, id)) {
+            result.* = executor.getOutput(node.node_id) catch return -2;
+            return 0;
+        }
+    }
+
+    return -3; // Node not found
 }
 
 /// Get the number of nodes in the pricing model
@@ -106,6 +127,86 @@ export fn pricing_is_dynamic_input(node_id: [*:0]const u8) c_int {
     }
 
     return -1; // Node not found
+}
+
+/// Get list of dynamic input node IDs (for batch processing setup)
+/// @param ids: Array of C string buffers to fill with node IDs
+/// @param buffer_size: Size of each buffer
+/// @param max_count: Maximum number of IDs to return
+/// Returns the actual count of dynamic inputs
+export fn pricing_get_dynamic_inputs(ids: [*][*]u8, buffer_size: c_int, max_count: c_int) c_int {
+    var count: c_int = 0;
+
+    inline for (PRICING_NODES) |node| {
+        if (node.operation == .dynamic_input_num or node.operation == .dynamic_input_str) {
+            if (count >= max_count) break;
+
+            const id_len = @min(node.node_id.len, @as(usize, @intCast(buffer_size - 1)));
+            @memcpy(ids[@intCast(count)][0..id_len], node.node_id[0..id_len]);
+            ids[@intCast(count)][id_len] = 0; // Null terminate
+
+            count += 1;
+        }
+    }
+
+    return count;
+}
+
+/// Batch calculate prices for multiple input sets
+/// This is much faster than calling pricing_calculate in a Python loop!
+///
+/// @param input_values: Flat array of input values [row0_input0, row0_input1, ..., row1_input0, row1_input1, ...]
+/// @param num_inputs: Number of dynamic inputs per row
+/// @param num_rows: Number of rows to process
+/// @param results: Output array for results (must have space for num_rows elements)
+/// Returns 0 on success, non-zero on error
+///
+/// Example:
+///   If you have 2 dynamic inputs and want to process 3 rows:
+///   input_values = [100.0, 200.0,  150.0, 250.0,  175.0, 225.0]
+///                   ^row0^         ^row1^         ^row2^
+///   num_inputs = 2, num_rows = 3
+export fn pricing_calculate_batch(
+    input_values: [*]const f64,
+    num_inputs: c_int,
+    num_rows: c_int,
+    results: [*]f64,
+) c_int {
+    // Get list of dynamic input node IDs (compile time)
+    const dynamic_inputs = comptime blk: {
+        var inputs: []const []const u8 = &.{};
+        for (PRICING_NODES) |node| {
+            if (node.operation == .dynamic_input_num or node.operation == .dynamic_input_str) {
+                inputs = inputs ++ &[_][]const u8{node.node_id};
+            }
+        }
+        break :blk inputs;
+    };
+
+    // Validate input count
+    if (num_inputs != dynamic_inputs.len) {
+        return -1; // Input count mismatch
+    }
+
+    // Create a local executor for batch processing
+    var batch_executor = PRICING_EXECUTOR.init();
+
+    // Process each row
+    var row: usize = 0;
+    while (row < @as(usize, @intCast(num_rows))) : (row += 1) {
+        // Set inputs for this row
+        const row_offset = row * @as(usize, @intCast(num_inputs));
+
+        inline for (dynamic_inputs, 0..) |node_id, i| {
+            const value = input_values[row_offset + i];
+            batch_executor.setInput(node_id, value) catch return -2;
+        }
+
+        // Calculate result
+        results[row] = batch_executor.getOutput(FUNNEL_NODE_ID) catch return -3;
+    }
+
+    return 0;
 }
 
 // Note: This library doesn't have a main() function

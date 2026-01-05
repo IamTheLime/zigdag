@@ -21,7 +21,6 @@ pub fn main() !void {
 
     // Initialize executor - everything is on the stack!
     var executor = PRICING_EXECUTOR.init();
-    _ = allocator; // No longer needed
 
     // Execute pricing calculation
     std.debug.print("\n", .{});
@@ -70,6 +69,16 @@ pub fn main() !void {
     }
     std.debug.print("\n", .{});
 
+    // Find the funnel node ID at compile time
+    const funnel_node_id = comptime blk: {
+        for (PRICING_NODES) |node| {
+            if (node.operation == .funnel) {
+                break :blk node.node_id;
+            }
+        }
+        @compileError("No funnel node found in pricing model! Every model must have a funnel node as the final output.");
+    };
+
     std.debug.print("Running example calculation...\n", .{});
 
     // Set input values - this is the ONLY runtime operation besides the math!
@@ -81,19 +90,98 @@ pub fn main() !void {
         }
     }
 
-    // Execute - this is pure computation, fully inlined by the compiler!
-    // Find the funnel node (the final output node)
-    const output_node = comptime blk: {
+    // Single test execution to show result
+    const test_result = try executor.getOutput(funnel_node_id);
+    std.debug.print("  Result: ${d:.2}\n", .{test_result});
+    std.debug.print("\n", .{});
+
+    // Benchmark: Run 1 million iterations
+    std.debug.print("Running benchmark (1,000,000 iterations)...\n", .{});
+    const iterations: usize = 1_000_000;
+
+    var timer = try std.time.Timer.start();
+    var i: usize = 0;
+    var total: f64 = 0.0;
+
+    while (i < iterations) : (i += 1) {
+        const result = try executor.getOutput(funnel_node_id);
+        total += result; // Prevent optimization from removing the calculation
+    }
+
+    const elapsed_ns = timer.read();
+    const elapsed_ms = @as(f64, @floatFromInt(elapsed_ns)) / 1_000_000.0;
+    const elapsed_s = elapsed_ms / 1000.0;
+    const per_iteration_ns = @as(f64, @floatFromInt(elapsed_ns)) / @as(f64, @floatFromInt(iterations));
+    const iterations_per_sec = @as(f64, @floatFromInt(iterations)) / elapsed_s;
+
+    std.debug.print("\nSingle-Item Benchmark Results:\n", .{});
+    std.debug.print("  Total time: {d:.2}ms ({d:.4}s)\n", .{ elapsed_ms, elapsed_s });
+    std.debug.print("  Per iteration: {d:.2}ns\n", .{per_iteration_ns});
+    std.debug.print("  Throughput: {d:.0} calculations/sec\n", .{iterations_per_sec});
+    std.debug.print("  Verification sum: ${d:.2}\n", .{total});
+    std.debug.print("\n", .{});
+
+    // Batch Benchmark
+    std.debug.print("Running batch benchmark (10,000 batches × 100 items = 1M)...\n", .{});
+
+    // Get list of dynamic inputs at compile time
+    const dynamic_inputs = comptime blk: {
+        var inputs: []const []const u8 = &.{};
         for (PRICING_NODES) |node| {
-            if (node.operation == .funnel) {
-                break :blk node;
+            if (node.operation == .dynamic_input_num or node.operation == .dynamic_input_str) {
+                inputs = inputs ++ &[_][]const u8{node.node_id};
             }
         }
-        @compileError("No funnel node found in pricing model! Every model must have a funnel node as the final output.");
+        break :blk inputs;
     };
-    const result = try executor.getOutput(output_node.node_id);
 
-    std.debug.print("  {s}: ${d:.2}\n", .{ output_node.metadata.name, result });
+    const batch_size: usize = 100;
+    const num_batches: usize = 10_000;
+    const total_batch_items = batch_size * num_batches;
+
+    // Prepare batch input data
+    const batch_inputs = try allocator.alloc(f64, batch_size * dynamic_inputs.len);
+    defer allocator.free(batch_inputs);
+    const batch_results = try allocator.alloc(f64, batch_size);
+    defer allocator.free(batch_results);
+
+    // Fill with test values
+    for (batch_inputs) |*val| {
+        val.* = 100.0;
+    }
+
+    var batch_executor = PRICING_EXECUTOR.init();
+    timer.reset();
+    var batch_idx: usize = 0;
+    var batch_total: f64 = 0.0;
+
+    while (batch_idx < num_batches) : (batch_idx += 1) {
+        // Process batch
+        var row: usize = 0;
+        while (row < batch_size) : (row += 1) {
+            // Set inputs for this row
+            inline for (dynamic_inputs, 0..) |node_id, input_idx| {
+                const value = batch_inputs[row * dynamic_inputs.len + input_idx];
+                try batch_executor.setInput(node_id, value);
+            }
+
+            // Calculate result
+            batch_results[row] = try batch_executor.getOutput(funnel_node_id);
+            batch_total += batch_results[row];
+        }
+    }
+
+    const batch_elapsed_ns = timer.read();
+    const batch_elapsed_ms = @as(f64, @floatFromInt(batch_elapsed_ns)) / 1_000_000.0;
+    const batch_elapsed_s = batch_elapsed_ms / 1000.0;
+    const batch_per_item_ns = @as(f64, @floatFromInt(batch_elapsed_ns)) / @as(f64, @floatFromInt(total_batch_items));
+    const batch_items_per_sec = @as(f64, @floatFromInt(total_batch_items)) / batch_elapsed_s;
+
+    std.debug.print("\nBatch Benchmark Results:\n", .{});
+    std.debug.print("  Total time: {d:.2}ms ({d:.4}s)\n", .{ batch_elapsed_ms, batch_elapsed_s });
+    std.debug.print("  Per item: {d:.2}ns\n", .{batch_per_item_ns});
+    std.debug.print("  Throughput: {d:.0} calculations/sec\n", .{batch_items_per_sec});
+    std.debug.print("  Verification sum: ${d:.2}\n", .{batch_total});
     std.debug.print("\n", .{});
 
     std.debug.print("Performance Characteristics:\n", .{});

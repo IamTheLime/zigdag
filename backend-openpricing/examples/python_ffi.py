@@ -40,6 +40,12 @@ lib.pricing_get_node_id.argtypes = [c_int, c_char_p, c_int]
 lib.pricing_is_dynamic_input.restype = c_int
 lib.pricing_is_dynamic_input.argtypes = [c_char_p]
 
+def input_gen():
+    start = 1000
+    while True:
+        start //= 2
+        yield start
+
 def main():
     print("=" * 50)
     print("OpenPricing Python FFI Example")
@@ -76,8 +82,9 @@ def main():
     
     # Set input values
     print("Setting input values:")
+    value_gen = input_gen()
     for node_id in dynamic_inputs:
-        value = 100.0  # Example value
+        value = next(value_gen)
         result = lib.pricing_set_input(node_id.encode('utf-8'), c_double(value))
         if result == 0:
             print(f"  ✓ {node_id} = {value}")
