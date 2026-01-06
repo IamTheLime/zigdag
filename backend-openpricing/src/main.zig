@@ -42,7 +42,7 @@ export fn pricing_init() c_int {
 /// @param node_id: C string containing the node ID
 /// @param value: The numeric value to set
 /// Returns 0 on success, non-zero on error
-export fn pricing_set_input(node_id: [*:0]const u8, value: f64) c_int {
+export fn pricing_set_dyn_input(node_id: [*:0]const u8, value: f64) c_int {
     if (!executor_initialized) return -1;
 
     const id = std.mem.span(node_id);
@@ -166,6 +166,9 @@ export fn pricing_get_dynamic_inputs(ids: [*][*]u8, buffer_size: c_int, max_coun
 ///   input_values = [100.0, 200.0,  150.0, 250.0,  175.0, 225.0]
 ///                   ^row0^         ^row1^         ^row2^
 ///   num_inputs = 2, num_rows = 3
+// TODO: This function will have to potentially be generated as a comptime function
+// At the moment is hard to set the input_values if you need to know order for sure, this
+// will end up being very error prone
 export fn pricing_calculate_batch(
     input_values: [*]const f64,
     num_inputs: c_int,
