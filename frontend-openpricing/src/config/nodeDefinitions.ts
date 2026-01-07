@@ -22,7 +22,7 @@ export const NODE_DEFINITIONS: Record<OperationType, NodeConfig> = {
     description: 'User-provided string input at runtime',
     category: 'input',
     inputCount: 0,
-    hasAllowedValues: true,
+    hasAllowedStrValues: true,
     color: '#66BB6A',
     icon: '📝',
   },

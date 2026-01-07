@@ -37,11 +37,13 @@ export function createNode(
       hasValue: def.hasValue,
       hasWeights: def.hasWeights,
       hasAllowedValues: def.hasAllowedValues,
+      hasAllowedStrValues: def.hasAllowedStrValues,
       hasConditionalValues: def.hasConditionalValues,
       // Default values
       value: def.hasValue ? 0.0 : undefined,
       stringValue: undefined,
       allowedValues: def.hasAllowedValues ? [] : undefined,
+      allowedStrValues: def.hasAllowedStrValues ? [] : undefined,
       conditionalValues: def.hasConditionalValues ? {} : undefined,
       weights: def.hasWeights ? [] : undefined,
     },

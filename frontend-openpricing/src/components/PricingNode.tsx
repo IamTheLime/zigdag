@@ -18,10 +18,12 @@ interface PricingNodeData {
   hasValue?: boolean;
   hasWeights?: boolean;
   hasAllowedValues?: boolean;
+  hasAllowedStrValues?: boolean;
   hasConditionalValues?: boolean;
   value?: number;
   stringValue?: string;
   allowedValues?: number[];
+  allowedStrValues?: string[];
   conditionalValues?: ConditionalValueMap;
   weights?: number[];
   customId?: string;
@@ -36,6 +38,7 @@ interface PricingNodeData {
 function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
   const [newCondKey, setNewCondKey] = useState('');
   const [newCondValue, setNewCondValue] = useState('');
+  const [newAllowedStrValue, setNewAllowedStrValue] = useState('');
 
   const handleValueChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,6 +111,31 @@ function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
         const currentValues = { ...(data.conditionalValues || {}) };
         delete currentValues[key];
         data.onChange({ conditionalValues: currentValues });
+      }
+    },
+    [data]
+  );
+
+  const handleAddAllowedStrValue = useCallback(() => {
+    if (!newAllowedStrValue) return;
+    if (data.onChange) {
+      const currentValues = data.allowedStrValues || [];
+      if (!currentValues.includes(newAllowedStrValue)) {
+        data.onChange({
+          allowedStrValues: [...currentValues, newAllowedStrValue],
+        });
+      }
+      setNewAllowedStrValue('');
+    }
+  }, [data, newAllowedStrValue]);
+
+  const handleRemoveAllowedStrValue = useCallback(
+    (value: string) => {
+      if (data.onChange) {
+        const currentValues = data.allowedStrValues || [];
+        data.onChange({
+          allowedStrValues: currentValues.filter((v) => v !== value),
+        });
       }
     },
     [data]
@@ -285,7 +313,7 @@ function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
           </div>
         )}
 
-        {/* Allowed Values */}
+        {/* Allowed Values (numeric) */}
         {data.hasAllowedValues && (
           <div className="space-y-1">
             <Label htmlFor={`allowed-${id}`} className="text-xs">
@@ -299,6 +327,63 @@ function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
               placeholder="e.g., 100, 200, 300"
               className="h-8 text-xs"
             />
+          </div>
+        )}
+
+        {/* Allowed String Values */}
+        {data.hasAllowedStrValues && (
+          <div className="space-y-2">
+            <Label className="text-xs">Allowed Values</Label>
+            
+            {/* Existing values */}
+            {data.allowedStrValues && data.allowedStrValues.length > 0 && (
+              <div className="space-y-1">
+                {data.allowedStrValues.map((value) => (
+                  <div key={value} className="flex items-center gap-2">
+                    <div className="flex-1 text-xs bg-muted p-2 rounded font-medium">
+                      {value}
+                    </div>
+                    <Button
+                      onClick={() => handleRemoveAllowedStrValue(value)}
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add new value */}
+            <div className="space-y-1">
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value={newAllowedStrValue}
+                  onChange={(e) => setNewAllowedStrValue(e.target.value)}
+                  placeholder="Enter allowed value"
+                  className="h-8 text-xs flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddAllowedStrValue();
+                    }
+                  }}
+                />
+              </div>
+              <Button
+                onClick={handleAddAllowedStrValue}
+                variant="outline"
+                size="sm"
+                className="w-full h-7 text-xs"
+                disabled={!newAllowedStrValue}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add Value
+              </Button>
+            </div>
           </div>
         )}
 

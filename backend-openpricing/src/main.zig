@@ -27,24 +27,13 @@ const FUNNEL_NODE_ID = blk: {
 };
 
 // Thread-local executor instance
-threadlocal var executor: PRICING_EXECUTOR = undefined;
-threadlocal var executor_initialized: bool = false;
-
-/// Initialize the pricing executor (call once per thread)
-/// Returns 0 on success, non-zero on error
-export fn pricing_init() c_int {
-    executor = PRICING_EXECUTOR.init();
-    executor_initialized = true;
-    return 0;
-}
+threadlocal var executor: PRICING_EXECUTOR = PRICING_EXECUTOR.init();
 
 /// Set a dynamic input value by node ID
 /// @param node_id: C string containing the node ID
 /// @param value: The numeric value to set
 /// Returns 0 on success, non-zero on error
 export fn pricing_set_dyn_input(node_id: [*:0]const u8, value: f64) c_int {
-    if (!executor_initialized) return -1;
-
     const id = std.mem.span(node_id);
 
     // Find the node with this ID
@@ -62,8 +51,6 @@ export fn pricing_set_dyn_input(node_id: [*:0]const u8, value: f64) c_int {
 /// @param result: Pointer to store the result
 /// Returns 0 on success, non-zero on error
 export fn pricing_calculate(result: *f64) c_int {
-    if (!executor_initialized) return -1;
-
     result.* = executor.getOutput(FUNNEL_NODE_ID) catch return -2;
 
     return 0;
@@ -74,8 +61,6 @@ export fn pricing_calculate(result: *f64) c_int {
 /// @param result: Pointer to store the result
 /// Returns 0 on success, non-zero on error
 export fn pricing_calculate_node(node_id: [*:0]const u8, result: *f64) c_int {
-    if (!executor_initialized) return -1;
-
     const id = std.mem.span(node_id);
 
     // Find the node with this ID

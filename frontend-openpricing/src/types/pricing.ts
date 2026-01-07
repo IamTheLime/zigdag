@@ -50,6 +50,7 @@ export interface PricingNode {
   constant_value: number;
   constant_str_value?: string;
   allowed_values?: number[];
+  allowed_str_values?: string[];
   conditional_values?: ConditionalValueMap;
   inputs: string[];
   metadata: NodeMetadata;
@@ -66,7 +67,8 @@ export interface NodeConfig {
   inputCount: number | 'variable'; // Expected number of inputs
   hasValue?: boolean; // Whether it has a constant_value
   hasWeights?: boolean; // Whether it uses weights
-  hasAllowedValues?: boolean; // Whether it has allowed_values
+  hasAllowedValues?: boolean; // Whether it has allowed_values (numeric)
+  hasAllowedStrValues?: boolean; // Whether it has allowed_str_values (string)
   hasConditionalValues?: boolean; // Whether it has conditional_values
   color: string; // Node color in UI
   icon?: string; // Optional icon
