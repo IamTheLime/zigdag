@@ -1,4 +1,6 @@
 {
+  "name": "playground-pricing",
+  "version": "0.1.0",
   "nodes": [
     {
       "id": "dynamic_input_num_1",

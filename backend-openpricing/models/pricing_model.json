@@ -1,4 +1,6 @@
 {
+  "name": "openpricing",
+  "version": "1.0.0",
   "nodes": [
     {
       "id": "dynamic_input_num_1",

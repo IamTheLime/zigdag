@@ -50,7 +50,7 @@ export fn pricing_set_dyn_input(node_id: [*:0]const u8, value: f64) c_int {
 /// Calculate the final pricing result (using the funnel node)
 /// @param result: Pointer to store the result
 /// Returns 0 on success, non-zero on error
-export fn calculate_final_price(result: *f64) c_int {
+export fn pricing_calculate(result: *f64) c_int {
     result.* = executor.getOutput(FUNNEL_NODE_ID) catch return -2;
 
     return 0;
@@ -60,7 +60,7 @@ export fn calculate_final_price(result: *f64) c_int {
 /// @param node_id: C string containing the node ID
 /// @param result: Pointer to store the result
 /// Returns 0 on success, non-zero on error
-export fn calculate_node_price(node_id: [*:0]const u8, result: *f64) c_int {
+export fn pricing_calculate_node(node_id: [*:0]const u8, result: *f64) c_int {
     const id = std.mem.span(node_id);
 
     // Find the node with this ID

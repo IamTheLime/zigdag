@@ -75,6 +75,8 @@ export interface NodeConfig {
 }
 
 export interface PricingGraph {
+  name: string;
+  version: string;
   nodes: PricingNode[];
 }
 

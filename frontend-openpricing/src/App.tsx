@@ -64,6 +64,8 @@ function FlowEditor() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [modelName, setModelName] = useState<string>('my-pricing-model');
+  const [modelVersion, setModelVersion] = useState<string>('1.0.0');
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -201,11 +203,11 @@ function FlowEditor() {
       };
     });
 
-    const graph: PricingGraph = { nodes: pricingNodes };
+    const graph: PricingGraph = { name: modelName, version: modelVersion, nodes: pricingNodes };
     const json = JSON.stringify(graph, null, 2);
     setJsonOutput(json);
     return json;
-  }, [nodes, edges]);
+  }, [nodes, edges, modelName, modelVersion]);
 
   const saveToPlayground = useCallback(() => {
     const json = jsonOutput || exportToJson();
@@ -333,6 +335,10 @@ function FlowEditor() {
           setEdges(newEdges);
           setJsonOutput(jsonContent);
           
+          // Set model name and version if present
+          if (graph.name) setModelName(graph.name);
+          if (graph.version) setModelVersion(graph.version);
+          
           // Fit view to show all imported nodes
           setTimeout(() => {
             reactFlowInstance?.fitView({ padding: 0.2 });
@@ -349,7 +355,7 @@ function FlowEditor() {
     };
     
     input.click();
-  }, [setNodes, setEdges, reactFlowInstance]);
+  }, [setNodes, setEdges, reactFlowInstance, setModelName, setModelVersion]);
 
   const deleteSelected = useCallback(() => {
     setNodes((nds) => nds.filter((node) => !node.selected));
@@ -442,6 +448,41 @@ function FlowEditor() {
             Build and export pricing models
           </p>
         </div>
+
+        {/* Model Info */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Model Info</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
+              <label htmlFor="model-name" className="text-xs text-muted-foreground">
+                Package Name
+              </label>
+              <input
+                id="model-name"
+                type="text"
+                value={modelName}
+                onChange={(e) => setModelName(e.target.value)}
+                placeholder="my-pricing-model"
+                className="w-full h-8 px-2 text-sm border rounded bg-background"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="model-version" className="text-xs text-muted-foreground">
+                Version
+              </label>
+              <input
+                id="model-version"
+                type="text"
+                value={modelVersion}
+                onChange={(e) => setModelVersion(e.target.value)}
+                placeholder="1.0.0"
+                className="w-full h-8 px-2 text-sm border rounded bg-background"
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Action Buttons */}
         <div className="space-y-2">
