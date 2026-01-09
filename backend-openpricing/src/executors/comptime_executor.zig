@@ -1,5 +1,5 @@
 const std = @import("std");
-const comptime_parser = @import("../json/comptime_parser.zig");
+const comptime_parser = @import("../core/comptime_parser.zig");
 const corenode = @import("../core/node.zig");
 const OperationType = corenode.OperationType;
 const PricingNode = corenode.PricingNode;
@@ -9,6 +9,14 @@ const PricingNode = corenode.PricingNode;
 pub fn ComptimeExecutorFromNodes(comptime nodes: []const PricingNode) type {
     const node_count = nodes.len;
     const execution_order = comptime_parser.computeExecutionOrder(nodes);
+    const _funnel_node = comptime blk: {
+        for (nodes) |node| {
+            if (node.operation == .funnel) {
+                break :blk node.node_id;
+            }
+        }
+        @compileError("No funnel node found in pricing model! Every model must have a funnel node as the final output.");
+    };
 
     return struct {
         const Self = @This();
@@ -27,8 +35,8 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const PricingNode) type {
         }
 
         /// Get output value - executes the graph if needed
-        pub fn getOutput(self: *Self, comptime output_node_id: []const u8) !f64 {
-            return try self.execute(output_node_id);
+        pub fn getOutput(self: *Self) !f64 {
+            return try self.execute(_funnel_node);
         }
 
         /// Execute the pricing graph - completely inlined at compile time!

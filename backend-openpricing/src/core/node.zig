@@ -73,7 +73,7 @@ pub const ValueInputStr = struct {
     // This is the only way that a user can
     // provide an input to the system
     user_value: ?[]u8,
-    allowed_values: ?[]const f64,
+    allowed_values: ?[]const []const u8,
 };
 
 pub const ConstantInputNum = struct {

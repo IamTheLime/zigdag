@@ -381,17 +381,17 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\_lib = CDLL(str(_LIB_PATH))
         \\
         \\# Set up function signatures
-        \\_lib.pricing_set_dyn_input.restype = c_int
-        \\_lib.pricing_set_dyn_input.argtypes = [c_char_p, c_double]
+        \\_lib.set_input_node_value.restype = c_int
+        \\_lib.set_input_node_value.argtypes = [c_char_p, c_double]
         \\
-        \\_lib.pricing_calculate.restype = c_int
-        \\_lib.pricing_calculate.argtypes = [POINTER(c_double)]
+        \\_lib.calculate_final_node_price.restype = c_int
+        \\_lib.calculate_final_node_price.argtypes = [POINTER(c_double)]
         \\
-        \\_lib.pricing_node_count.restype = c_int
-        \\_lib.pricing_node_count.argtypes = []
+        \\_lib.get_node_count.restype = c_int
+        \\_lib.get_node_count.argtypes = []
         \\
-        \\_lib.pricing_calculate_batch.restype = c_int
-        \\_lib.pricing_calculate_batch.argtypes = [
+        \\_lib.calculate_final_node_price_batch.restype = c_int
+        \\_lib.calculate_final_node_price_batch.argtypes = [
         \\    POINTER(c_double), c_int, c_int, POINTER(c_double)
         \\]
         \\
@@ -413,7 +413,7 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\    
         \\    def __init__(self) -> None:
         \\        """Initialize the pricing engine."""
-        \\        self._node_count = _lib.pricing_node_count()
+        \\        self._node_count = _lib.get_node_count()
         \\    
         \\    @property
         \\    def node_count(self) -> int:
@@ -436,7 +436,7 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\        Raises:
         \\            ValueError: If the node is not found
         \\        """
-        \\        result = _lib.pricing_set_dyn_input(
+        \\        result = _lib.set_input_node_value(
         \\            node_id.encode('utf-8'),
         \\            c_double(value)
         \\        )
@@ -460,7 +460,7 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\            self.set_input(node_id, value)
         \\        
         \\        result = c_double()
-        \\        ret = _lib.pricing_calculate(byref(result))
+        \\        ret = _lib.calculate_final_node_price(byref(result))
         \\        
         \\        if ret != 0:
         \\            raise RuntimeError(f"Calculation failed with error code: {{ret}}")
@@ -513,7 +513,7 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\        input_c_array = (c_double * len(input_flat))(*input_flat)
         \\        results_c_array = (c_double * batch_size)()
         \\        
-        \\        ret = _lib.pricing_calculate_batch(
+        \\        ret = _lib.calculate_final_node_price_batch(
         \\            input_c_array,
         \\            c_int(num_inputs),
         \\            c_int(batch_size),

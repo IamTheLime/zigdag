@@ -68,17 +68,6 @@ pub fn main() !void {
         }
     }
     std.debug.print("\n", .{});
-
-    // Find the funnel node ID at compile time
-    const funnel_node_id = comptime blk: {
-        for (PRICING_NODES) |node| {
-            if (node.operation == .funnel) {
-                break :blk node.node_id;
-            }
-        }
-        @compileError("No funnel node found in pricing model! Every model must have a funnel node as the final output.");
-    };
-
     std.debug.print("Running example calculation...\n", .{});
 
     // Set input values - this is the ONLY runtime operation besides the math!
@@ -91,7 +80,7 @@ pub fn main() !void {
     }
 
     // Single test execution to show result
-    const test_result = try executor.getOutput(funnel_node_id);
+    const test_result = try executor.getOutput();
     std.debug.print("  Result: ${d:.2}\n", .{test_result});
     std.debug.print("\n", .{});
 
@@ -104,7 +93,7 @@ pub fn main() !void {
     var total: f64 = 0.0;
 
     while (i < iterations) : (i += 1) {
-        const result = try executor.getOutput(funnel_node_id);
+        const result = try executor.getOutput();
         total += result; // Prevent optimization from removing the calculation
     }
 
@@ -166,7 +155,7 @@ pub fn main() !void {
             }
 
             // Calculate result
-            batch_results[row] = try batch_executor.getOutput(funnel_node_id);
+            batch_results[row] = try batch_executor.getOutput();
             batch_total += batch_results[row];
         }
     }

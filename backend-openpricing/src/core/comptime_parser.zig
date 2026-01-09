@@ -4,11 +4,6 @@ const OperationType = node_module.OperationType;
 const NodeOperation = node_module.NodeOperation;
 const PricingNode = node_module.PricingNode;
 
-/// Helper function to define nodes at compile time manually
-pub fn defineComptimeNodes(comptime nodes: []const PricingNode) []const PricingNode {
-    return nodes;
-}
-
 /// Extract all dependency node IDs from a NodeOperation at compile time
 pub fn getDependencies(comptime operation: NodeOperation) []const []const u8 {
     return switch (operation) {
@@ -48,7 +43,7 @@ pub fn getDependencies(comptime operation: NodeOperation) []const []const u8 {
 
 /// Find node index by ID at compile time
 pub fn getNodeIndex(comptime nodes: []const PricingNode, comptime id: []const u8) usize {
-    inline for (nodes, 0..) |node, i| {
+    for (nodes, 0..) |node, i| {
         if (std.mem.eql(u8, node.node_id, id)) {
             return i;
         }

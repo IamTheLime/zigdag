@@ -16,16 +16,6 @@ const generated = @import("generated_nodes");
 const PRICING_NODES = generated.nodes;
 const PRICING_EXECUTOR = openpricing.ComptimeExecutorFromNodes(PRICING_NODES);
 
-// Find the funnel node ID at compile time
-const FUNNEL_NODE_ID = blk: {
-    for (PRICING_NODES) |node| {
-        if (node.operation == .funnel) {
-            break :blk node.node_id;
-        }
-    }
-    @compileError("No funnel node found in pricing model! Every model must have a funnel node as the final output.");
-};
-
 // Thread-local executor instance
 threadlocal var executor: PRICING_EXECUTOR = PRICING_EXECUTOR.init();
 
@@ -33,7 +23,7 @@ threadlocal var executor: PRICING_EXECUTOR = PRICING_EXECUTOR.init();
 /// @param node_id: C string containing the node ID
 /// @param value: The numeric value to set
 /// Returns 0 on success, non-zero on error
-export fn pricing_set_dyn_input(node_id: [*:0]const u8, value: f64) c_int {
+export fn set_input_node_value(node_id: [*:0]const u8, value: f64) c_int {
     const id = std.mem.span(node_id);
 
     // Find the node with this ID
@@ -50,8 +40,8 @@ export fn pricing_set_dyn_input(node_id: [*:0]const u8, value: f64) c_int {
 /// Calculate the final pricing result (using the funnel node)
 /// @param result: Pointer to store the result
 /// Returns 0 on success, non-zero on error
-export fn pricing_calculate(result: *f64) c_int {
-    result.* = executor.getOutput(FUNNEL_NODE_ID) catch return -2;
+export fn calculate_final_node_price(result: *f64) c_int {
+    result.* = executor.getOutput() catch return -2;
 
     return 0;
 }
@@ -60,13 +50,13 @@ export fn pricing_calculate(result: *f64) c_int {
 /// @param node_id: C string containing the node ID
 /// @param result: Pointer to store the result
 /// Returns 0 on success, non-zero on error
-export fn pricing_calculate_node(node_id: [*:0]const u8, result: *f64) c_int {
+export fn calculate_node_price(node_id: [*:0]const u8, result: *f64) c_int {
     const id = std.mem.span(node_id);
 
     // Find the node with this ID
     inline for (PRICING_NODES) |node| {
         if (std.mem.eql(u8, node.node_id, id)) {
-            result.* = executor.getOutput(node.node_id) catch return -2;
+            result.* = executor.getOutput() catch return -2;
             return 0;
         }
     }
@@ -75,7 +65,7 @@ export fn pricing_calculate_node(node_id: [*:0]const u8, result: *f64) c_int {
 }
 
 /// Get the number of nodes in the pricing model
-export fn pricing_node_count() c_int {
+export fn get_node_count() c_int {
     return @intCast(PRICING_NODES.len);
 }
 
@@ -84,7 +74,7 @@ export fn pricing_node_count() c_int {
 /// @param buffer: Buffer to store the node ID
 /// @param buffer_len: Size of the buffer
 /// Returns length of node ID on success, -1 on error
-export fn pricing_get_node_id(index: c_int, buffer: [*]u8, buffer_len: c_int) c_int {
+export fn get_node_id(index: c_int, buffer: [*]u8, buffer_len: c_int) c_int {
     if (index < 0 or index >= PRICING_NODES.len) return -1;
 
     const node = PRICING_NODES[@intCast(index)];
@@ -101,7 +91,7 @@ export fn pricing_get_node_id(index: c_int, buffer: [*]u8, buffer_len: c_int) c_
 /// Check if a node is a dynamic input (requires runtime value)
 /// @param node_id: C string containing the node ID
 /// Returns 1 if dynamic input, 0 if not, -1 on error
-export fn pricing_is_dynamic_input(node_id: [*:0]const u8) c_int {
+export fn is_dynamic_input(node_id: [*:0]const u8) c_int {
     const id = std.mem.span(node_id);
 
     inline for (PRICING_NODES) |node| {
@@ -119,7 +109,7 @@ export fn pricing_is_dynamic_input(node_id: [*:0]const u8) c_int {
 /// @param buffer_size: Size of each buffer
 /// @param max_count: Maximum number of IDs to return
 /// Returns the actual count of dynamic inputs
-export fn pricing_get_dynamic_inputs(ids: [*][*]u8, buffer_size: c_int, max_count: c_int) c_int {
+export fn get_dynamic_inputs(ids: [*][*]u8, buffer_size: c_int, max_count: c_int) c_int {
     var count: c_int = 0;
 
     inline for (PRICING_NODES) |node| {
@@ -138,7 +128,7 @@ export fn pricing_get_dynamic_inputs(ids: [*][*]u8, buffer_size: c_int, max_coun
 }
 
 /// Batch calculate prices for multiple input sets
-/// This is much faster than calling pricing_calculate in a Python loop!
+/// This is much faster than calling calculate_final_node_price in a Python loop!
 ///
 /// @param input_values: Flat array of input values [row0_input0, row0_input1, ..., row1_input0, row1_input1, ...]
 /// @param num_inputs: Number of dynamic inputs per row
@@ -151,7 +141,7 @@ export fn pricing_get_dynamic_inputs(ids: [*][*]u8, buffer_size: c_int, max_coun
 ///   input_values = [100.0, 200.0,  150.0, 250.0,  175.0, 225.0]
 ///                   ^row0^         ^row1^         ^row2^
 ///   num_inputs = 2, num_rows = 3
-export fn pricing_calculate_batch(
+export fn calculate_final_node_price_batch(
     input_values: [*]const f64,
     num_inputs: c_int,
     num_rows: c_int,
@@ -188,7 +178,7 @@ export fn pricing_calculate_batch(
         }
 
         // Calculate result
-        results[row] = batch_executor.getOutput(FUNNEL_NODE_ID) catch return -3;
+        results[row] = batch_executor.getOutput() catch return -3;
     }
 
     return 0;
@@ -211,5 +201,5 @@ export fn pricing_calculate_batch(
 //
 // # Calculate
 // result = c_double()
-// lib.pricing_calculate(byref(result))
+// lib.calculate_final_node_price(byref(result))
 // print(f"Price: ${result.value:.2f}")
