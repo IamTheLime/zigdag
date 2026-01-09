@@ -47,7 +47,7 @@ def main():
     print("=" * 60)
 
     # Only run small sample for Python loop (it's slow!)
-    small_batch = 10_000
+    small_batch = 1_000_000
 
     start_time = time.perf_counter()
     python_results = []
