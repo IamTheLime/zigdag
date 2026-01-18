@@ -1,0 +1,258 @@
+{
+  "name": "playground-pricing",
+  "version": "0.1.0",
+  "nodes": [
+    {
+      "id": "dynamic_input_num_1",
+      "operation": "dynamic_input_num",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "Dynamic Input (Number)",
+        "description": "User-provided numeric input at runtime",
+        "position_x": 1048.7989074444026,
+        "position_y": 791.7196749044225
+      }
+    },
+    {
+      "id": "dynamic_input_num_2",
+      "operation": "dynamic_input_num",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "Dynamic Input (Number)",
+        "description": "User-provided numeric input at runtime",
+        "position_x": 2521.6207852673638,
+        "position_y": 952.3912595552217
+      }
+    },
+    {
+      "id": "constant_input_num_3",
+      "operation": "constant_input_num",
+      "weights": [],
+      "constant_value": 300,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "Constant (Number)",
+        "description": "Hardcoded numeric value",
+        "position_x": 2008.7923529769955,
+        "position_y": 433.75199071066373
+      }
+    },
+    {
+      "id": "constant_input_num_5",
+      "operation": "constant_input_num",
+      "weights": [],
+      "constant_value": 33,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "Constant (Number)",
+        "description": "Hardcoded numeric value",
+        "position_x": 1533.5785235080461,
+        "position_y": 1101.2580131219565
+      }
+    },
+    {
+      "id": "constant_input_num_6",
+      "operation": "constant_input_num",
+      "weights": [],
+      "constant_value": 125,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "Constant (Number)",
+        "description": "Hardcoded numeric value",
+        "position_x": 1052.7479141439785,
+        "position_y": 337.58586883785046
+      }
+    },
+    {
+      "id": "multiply_7",
+      "operation": "multiply",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [
+        "constant_input_num_6",
+        "dynamic_input_num_1"
+      ],
+      "metadata": {
+        "name": "Multiply",
+        "description": "Multiplication (a × b)",
+        "position_x": 1506.7486284939257,
+        "position_y": 660.0252186466952
+      }
+    },
+    {
+      "id": "multiply_8",
+      "operation": "multiply",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [
+        "constant_input_num_3",
+        "add_11"
+      ],
+      "metadata": {
+        "name": "Multiply",
+        "description": "Multiplication (a × b)",
+        "position_x": 2543.36285397587,
+        "position_y": 529.9181125834772
+      }
+    },
+    {
+      "id": "divide_9",
+      "operation": "divide",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [
+        "multiply_8",
+        "dynamic_input_num_2"
+      ],
+      "metadata": {
+        "name": "Divide",
+        "description": "Division (a ÷ b)",
+        "position_x": 3068.0339012525433,
+        "position_y": 715.1793179561028
+      }
+    },
+    {
+      "id": "subtract_10",
+      "operation": "subtract",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [
+        "divide_9",
+        "conditional_value_input_12"
+      ],
+      "metadata": {
+        "name": "Subtract",
+        "description": "Subtraction (a - b)",
+        "position_x": 3032.6071966183017,
+        "position_y": 1533.9574712959939
+      }
+    },
+    {
+      "id": "add_11",
+      "operation": "add",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [
+        "multiply_7",
+        "constant_input_num_5"
+      ],
+      "metadata": {
+        "name": "Add",
+        "description": "Addition (a + b)",
+        "position_x": 1996.7109591130943,
+        "position_y": 862.2569161145233
+      }
+    },
+    {
+      "id": "conditional_value_input_12",
+      "operation": "conditional_value_input",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "conditional_values": {
+        "turtle": 125,
+        "dog": 100,
+        "carrot": 200
+      },
+      "inputs": [
+        "constant_input_str_13"
+      ],
+      "metadata": {
+        "name": "Conditional Value",
+        "description": "Maps string input to numeric output",
+        "position_x": 1971.2792660971018,
+        "position_y": 1637.2186766686195
+      }
+    },
+    {
+      "id": "constant_input_str_13",
+      "operation": "constant_input_str",
+      "weights": [],
+      "constant_value": 0,
+      "constant_str_value": "turtle",
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "Constant (String)",
+        "description": "Hardcoded string value",
+        "position_x": 1489.9728325395954,
+        "position_y": 1685.7464292378313
+      }
+    },
+    {
+      "id": "funnel_14",
+      "operation": "funnel",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [
+        "multiply_15"
+      ],
+      "metadata": {
+        "name": "Final Output",
+        "description": "Marks the final output of the pricing model",
+        "position_x": 3919.525190357316,
+        "position_y": 1541.1677609524581
+      }
+    },
+    {
+      "id": "multiply_15",
+      "operation": "multiply",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [
+        "subtract_10",
+        "constant_input_num_16"
+      ],
+      "metadata": {
+        "name": "Multiply",
+        "description": "Multiplication (a × b)",
+        "position_x": 3522.096662525285,
+        "position_y": 1635.5963193020675
+      }
+    },
+    {
+      "id": "constant_input_num_16",
+      "operation": "constant_input_num",
+      "weights": [],
+      "constant_value": 200,
+      "allowed_values": [],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "Constant (Number)",
+        "description": "Hardcoded numeric value",
+        "position_x": 2972.096662525285,
+        "position_y": 1929.5963193020675
+      }
+    }
+  ]
+}
