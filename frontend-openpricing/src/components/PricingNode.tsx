@@ -31,6 +31,8 @@ interface PricingNodeData {
   weights?: number[];
   customId?: string;
   customDescription?: string;
+  islandColor?: string;
+  islandId?: number;
   onChange?: (data: Partial<PricingNodeData>) => void;
   onDelete?: () => void;
 }
@@ -169,6 +171,7 @@ function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
       style={{
         borderColor: `${data.color}${selected ? '90' : '40'}`, // 40% opacity base, 90% when selected 
         borderWidth: '1px',
+        backgroundColor: data.islandColor ? `${data.islandColor}40` : undefined, // 25% opacity island color
       }}
     >
       {/* Delete button */}

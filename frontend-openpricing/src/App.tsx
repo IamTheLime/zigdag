@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useEffect, DragEvent } from 'react';
+import { useCallback, useState, useRef, useEffect, useMemo, DragEvent } from 'react';
 import ReactFlow, {
   addEdge,
   Connection,
@@ -19,6 +19,7 @@ import CustomEdge from './components/CustomEdge';
 import NodePalette from './components/NodePalette';
 import { CommandPalette } from './components/CommandPalette';
 import CustomMiniMap from './components/CustomMiniMap';
+import { IslandHighlight } from './components/IslandHighlight';
 import { ThemeProvider } from './components/theme-provider';
 import { ThemeToggle } from './components/theme-toggle';
 import { Button } from './components/ui/button';
@@ -28,7 +29,10 @@ import {
   Upload,
   PanelLeftClose,
   PanelLeftOpen,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
+import { validateGraph, type GraphIsland } from './utils/graphValidation';
 
 const nodeTypes = {
   custom: PricingNodeComponent,
@@ -63,10 +67,59 @@ function FlowEditor() {
   const [modelName, setModelName] = useState<string>('my-pricing-model');
   const [modelVersion, setModelVersion] = useState<string>('1.0.0');
   const [leftSidebarVisible, setLeftSidebarVisible] = useState(true);
+  const [highlightedIslands, setHighlightedIslands] = useState<GraphIsland[]>([]);
+  const islandTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Platform-aware keyboard shortcut
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const modKey = isMac ? '⌘' : 'Ctrl';
+
+  // Graph validation
+  const validation = useMemo(() => validateGraph(nodes, edges), [nodes, edges]);
+
+  // Handle island highlighting
+  const highlightIslands = useCallback((islands: GraphIsland[]) => {
+    // Clear any existing timeout
+    if (islandTimeoutRef.current) {
+      clearTimeout(islandTimeoutRef.current);
+    }
+
+    // Apply island colors to nodes
+    setNodes((nds) =>
+      nds.map((node) => {
+        const island = islands.find((isl) => isl.nodeIds.includes(node.id));
+        if (island) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              islandColor: island.color,
+              islandId: island.id,
+            },
+          };
+        }
+        return node;
+      })
+    );
+
+    // Set highlighted islands for legend
+    setHighlightedIslands(islands);
+
+    // Auto-revert after 4 seconds
+    islandTimeoutRef.current = setTimeout(() => {
+      setNodes((nds) =>
+        nds.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            islandColor: undefined,
+            islandId: undefined,
+          },
+        }))
+      );
+      setHighlightedIslands([]);
+    }, 4000);
+  }, [setNodes]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -516,6 +569,9 @@ function FlowEditor() {
             />
             <Background gap={12} size={1} />
           </ReactFlow>
+          {highlightedIslands.length > 0 && (
+            <IslandHighlight islands={highlightedIslands} />
+          )}
         </div>
       </div>
 
@@ -528,6 +584,35 @@ function FlowEditor() {
           </div>
           <div className="h-3 w-px bg-border/40" />
           <div>{edges.length} connections</div>
+          {nodes.length > 0 && (
+            <>
+              <div className="h-3 w-px bg-border/40" />
+              <button
+                className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer"
+                onClick={() => {
+                  if (!validation.isFullyConnected) {
+                    highlightIslands(validation.islands);
+                  }
+                }}
+                title={validation.issues.join(', ')}
+              >
+                {validation.isValid ? (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400" />
+                    <span className="text-green-600 dark:text-green-400">Valid graph</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                    <span className="text-amber-600 dark:text-amber-400">
+                      {validation.issues[0]}
+                      {validation.issues.length > 1 && ` +${validation.issues.length - 1} more`}
+                    </span>
+                  </>
+                )}
+              </button>
+            </>
+          )}
           {jsonOutput && (
             <>
               <div className="h-3 w-px bg-border/40" />
