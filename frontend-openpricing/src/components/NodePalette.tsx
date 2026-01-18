@@ -1,62 +1,74 @@
 import { useMemo, useState } from 'react';
 import type { OperationType } from '../types/pricing';
 import { NODE_CATEGORIES, getNodesByCategory } from '../config/nodeDefinitions';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Info } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { NodeIcon } from './NodeIcon';
 
 interface NodePaletteProps {
   onNodeCreate: (operation: OperationType) => void;
+  isVisible: boolean;
 }
 
-export default function NodePalette({ onNodeCreate }: NodePaletteProps) {
-  const [expandedCategory, setExpandedCategory] = useState<string>('input');
+export default function NodePalette({ onNodeCreate, isVisible }: NodePaletteProps) {
+  const [filter, setFilter] = useState('');
 
   const categorizedNodes = useMemo(() => {
     return NODE_CATEGORIES.map((cat) => ({
       ...cat,
-      nodes: getNodesByCategory(cat.id as any),
-    }));
-  }, []);
+      nodes: getNodesByCategory(cat.id as any).filter((node) => {
+        if (!filter) return true;
+        const searchTerm = filter.toLowerCase();
+        return (
+          node.label.toLowerCase().includes(searchTerm) ||
+          node.description.toLowerCase().includes(searchTerm) ||
+          node.operation.toLowerCase().includes(searchTerm)
+        );
+      }),
+    })).filter((cat) => cat.nodes.length > 0);
+  }, [filter]);
+
+  if (!isVisible) return null;
 
   return (
-    <div className="w-[300px] border-r bg-muted/30 p-4 overflow-auto h-full">
-      <div className="mb-6">
-        <h3 className="text-lg font-bold mb-2">Node Palette</h3>
-        <p className="text-xs text-muted-foreground">
-          Drag nodes onto the canvas or click to add them
-        </p>
+    <div className="w-[280px] border-r border-border/40 bg-background overflow-hidden h-full flex flex-col">
+      {/* Header */}
+      <div className="p-4 border-b border-border/40">
+        <h3 className="text-sm font-semibold mb-3">Nodes</h3>
+        
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Filter nodes..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="h-8 pl-8 text-xs bg-muted/40 border-border/40"
+          />
+        </div>
       </div>
 
-      <div className="space-y-3">
-        {categorizedNodes.map((category) => (
-          <div key={category.id}>
-            {/* Category header */}
-            <Button
-              onClick={() =>
-                setExpandedCategory(expandedCategory === category.id ? '' : category.id)
-              }
-              variant="secondary"
-              className="w-full justify-between h-auto py-2 px-3"
-              style={{
-                backgroundColor: category.color,
-                color: 'white',
-              }}
-            >
-              <span className="font-semibold text-sm">{category.label}</span>
-              {expandedCategory === category.id ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
+      {/* Categories - All Expanded */}
+      <div className="flex-1 overflow-auto">
+        <div className="p-2">
+          {categorizedNodes.map((category, categoryIndex) => (
+            <div key={category.id}>
+              {categoryIndex > 0 && (
+                <hr className="my-3 border-border/40" />
               )}
-            </Button>
+              
+              {/* Category header */}
+              <div className="px-2 py-1.5">
+                <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                  {category.label}
+                </h4>
+              </div>
 
-            {/* Category nodes */}
-            {expandedCategory === category.id && (
-              <div className="mt-2 space-y-2">
+              {/* Category nodes */}
+              <div className="mt-1">
                 {category.nodes.map((node) => (
-                  <Card
+                  <div
                     key={node.operation}
                     onClick={() => onNodeCreate(node.operation)}
                     draggable
@@ -65,53 +77,43 @@ export default function NodePalette({ onNodeCreate }: NodePaletteProps) {
                       e.dataTransfer.effectAllowed = 'move';
                     }}
                     className={cn(
-                      'cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:translate-x-1',
-                      'border-2'
+                      'group relative flex items-start gap-2.5 px-3 py-2 mx-1 rounded-sm',
+                      'cursor-grab active:cursor-grabbing',
+                      'transition-colors duration-150',
+                      'hover:bg-accent/50',
                     )}
-                    style={{ borderColor: node.color }}
                   >
-                    <CardHeader className="p-3 pb-2">
-                      <div className="flex items-start gap-2">
-                        {node.icon && <span className="text-lg">{node.icon}</span>}
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-xs font-semibold leading-tight">
-                            {node.label}
-                          </CardTitle>
-                        </div>
+                    {/* Icon */}
+                    {node.icon && (
+                      <NodeIcon icon={node.icon} className="text-sm shrink-0 mt-px opacity-70" />
+                    )}
+                    
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 space-y-0.5">
+                      <div className="text-xs font-medium leading-tight flex items-center gap-1.5">
+                        <span>{node.label}</span>
+                        <div 
+                          className="w-1 h-1 rounded-full shrink-0"
+                          style={{ backgroundColor: node.color, opacity: 0.6 }}
+                        />
                       </div>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0">
-                      <CardDescription className="text-xs leading-relaxed">
+                      <div className="text-[10px] leading-snug text-muted-foreground">
                         {node.description}
-                      </CardDescription>
-                    </CardContent>
-                  </Card>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
-            )}
-          </div>
-        ))}
-      </div>
+            </div>
+          ))}
 
-      {/* Help section */}
-      <Card className="mt-6 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-        <CardHeader className="p-3 pb-2">
-          <div className="flex items-center gap-2">
-            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <CardTitle className="text-xs font-semibold text-blue-900 dark:text-blue-100">
-              Quick Tips
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="p-3 pt-0">
-          <ul className="text-xs space-y-1 text-blue-800 dark:text-blue-200">
-            <li>• Drag nodes onto canvas</li>
-            <li>• Connect nodes with edges</li>
-            <li>• Edit node values inline</li>
-            <li>• Save to playground to test</li>
-          </ul>
-        </CardContent>
-      </Card>
+          {categorizedNodes.length === 0 && (
+            <div className="p-4 text-center text-xs text-muted-foreground">
+              No nodes found
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

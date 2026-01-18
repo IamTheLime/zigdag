@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus } from 'lucide-react';
 import type { ConditionalValueMap } from '@/types/pricing';
+import { NodeIcon } from './NodeIcon';
 
 interface PricingNodeData {
   operation: string;
@@ -24,6 +25,8 @@ interface PricingNodeData {
   stringValue?: string;
   allowedValues?: number[];
   allowedStrValues?: string[];
+  defaultValue?: number;
+  defaultStrValue?: string;
   conditionalValues?: ConditionalValueMap;
   weights?: number[];
   customId?: string;
@@ -39,6 +42,7 @@ function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
   const [newCondKey, setNewCondKey] = useState('');
   const [newCondValue, setNewCondValue] = useState('');
   const [newAllowedStrValue, setNewAllowedStrValue] = useState('');
+  const [newAllowedNumValue, setNewAllowedNumValue] = useState('');
 
   const handleValueChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,14 +63,29 @@ function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
     [data]
   );
 
-  const handleAllowedValuesChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddAllowedNumValue = useCallback(() => {
+    if (!newAllowedNumValue || newAllowedNumValue === '') return;
+    const numValue = parseFloat(newAllowedNumValue);
+    if (isNaN(numValue)) return;
+    
+    if (data.onChange) {
+      const currentValues = data.allowedValues || [];
+      if (!currentValues.includes(numValue)) {
+        data.onChange({
+          allowedValues: [...currentValues, numValue],
+        });
+      }
+      setNewAllowedNumValue('');
+    }
+  }, [data, newAllowedNumValue]);
+
+  const handleRemoveAllowedNumValue = useCallback(
+    (value: number) => {
       if (data.onChange) {
-        const values = e.target.value
-          .split(',')
-          .map((v) => parseFloat(v.trim()))
-          .filter((v) => !isNaN(v));
-        data.onChange({ allowedValues: values });
+        const currentValues = data.allowedValues || [];
+        data.onChange({
+          allowedValues: currentValues.filter((v) => v !== value),
+        });
       }
     },
     [data]
@@ -146,26 +165,23 @@ function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
 
   return (
     <Card
-      className="min-w-[240px] transition-shadow"
+      className="min-w-[240px] transition-all duration-200 rounded-none"
       style={{
-        borderColor: data.color,
-        borderWidth: '2px',
-        boxShadow: selected ? `0 0 0 2px ${data.color}` : undefined,
+        borderColor: `${data.color}${selected ? '90' : '40'}`, // 40% opacity base, 90% when selected 
+        borderWidth: '1px',
       }}
     >
       {/* Delete button */}
       {data.onDelete && (
-        <Button
+        <button
           onClick={(e) => {
             e.stopPropagation();
             data.onDelete?.();
           }}
-          variant="destructive"
-          size="icon"
-          className="absolute -top-2 -right-2 h-6 w-6 rounded-full z-10"
+          className="absolute -top-2 -right-2 h-5 w-5 bg-muted border border-border flex items-center justify-center z-10 hover:border-red-500 transition-colors group"
         >
-          <X className="h-4 w-4" />
-        </Button>
+          <X className="h-3 w-3 text-red-300 group-hover:text-red-500" />
+        </button>
       )}
 
       {/* Target handles */}
@@ -202,26 +218,26 @@ function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
                 position={Position.Left}
                 id="target-a"
                 style={{ top: '35%', background: data.color }}
-                className="w-3 h-3"
+                className="w-3 h-3 z-10"
               />
               <div 
-                className="absolute left-1 text-[10px] font-mono text-muted-foreground pointer-events-none"
-                style={{ top: '35%', transform: 'translateY(-50%)' }}
+                className="absolute -left-0.5 bg-muted border border-border/40 px-1 pointer-events-none text-[9px] font-medium text-foreground/70 z-20"
+                style={{ top: 'calc(35% + 10px)' }}
               >
-                a
+                1
               </div>
               <Handle
                 type="target"
                 position={Position.Left}
                 id="target-b"
                 style={{ top: '65%', background: data.color }}
-                className="w-3 h-3"
+                className="w-3 h-3 z-10"
               />
               <div 
-                className="absolute left-1 text-[10px] font-mono text-muted-foreground pointer-events-none"
-                style={{ top: '65%', transform: 'translateY(-50%)' }}
+                className="absolute -left-0.5 bg-muted border border-border/40 px-1 pointer-events-none text-[9px] font-medium text-foreground/70 z-20"
+                style={{ top: 'calc(65% + 10px)' }}
               >
-                b
+                2
               </div>
             </>
           ) : (
@@ -238,7 +254,7 @@ function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
 
       <CardHeader className="p-4 pb-2">
         <div className="flex items-center gap-2">
-          {data.icon && <span className="text-xl">{data.icon}</span>}
+          {data.icon && <NodeIcon icon={data.icon} className="text-base opacity-70" />}
           <div className="flex-1">
             <CardTitle className="text-sm">{data.label}</CardTitle>
             <CardDescription className="text-xs">{data.operation}</CardDescription>
@@ -315,18 +331,85 @@ function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
 
         {/* Allowed Values (numeric) */}
         {data.hasAllowedValues && (
-          <div className="space-y-1">
-            <Label htmlFor={`allowed-${id}`} className="text-xs">
-              Allowed Values (comma-separated)
-            </Label>
-            <Input
-              id={`allowed-${id}`}
-              type="text"
-              value={data.allowedValues?.join(', ') || ''}
-              onChange={handleAllowedValuesChange}
-              placeholder="e.g., 100, 200, 300"
-              className="h-8 text-xs"
-            />
+          <div className="space-y-2">
+            <Label className="text-xs">Allowed Values</Label>
+            
+            {/* Existing values */}
+            {data.allowedValues && data.allowedValues.length > 0 && (
+              <div className="space-y-1">
+                {data.allowedValues.map((value) => (
+                  <div key={value} className="flex items-center gap-2">
+                    <div className="flex-1 text-xs bg-muted p-2 rounded font-medium">
+                      {value}
+                    </div>
+                    <button
+                      onClick={() => handleRemoveAllowedNumValue(value)}
+                      className="h-5 w-5 bg-muted border border-border flex items-center justify-center hover:border-red-500 transition-colors group shrink-0"
+                    >
+                      <X className="h-3 w-3 text-red-300 group-hover:text-red-500" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add new value */}
+            <div className="space-y-1">
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  value={newAllowedNumValue}
+                  onChange={(e) => setNewAllowedNumValue(e.target.value)}
+                  placeholder="Enter allowed value"
+                  step="any"
+                  className="h-8 text-xs flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddAllowedNumValue();
+                    }
+                  }}
+                />
+              </div>
+              <Button
+                onClick={handleAddAllowedNumValue}
+                variant="outline"
+                size="sm"
+                className="w-full h-7 text-xs"
+                disabled={!newAllowedNumValue || newAllowedNumValue === ''}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add Value
+              </Button>
+            </div>
+
+            {/* Default Value for numeric dynamic inputs */}
+            {data.allowedValues && data.allowedValues.length > 0 && (
+              <div className="space-y-1.5 mt-3">
+                <Label className="text-xs text-muted-foreground">Default Value</Label>
+                <Input
+                  type="number"
+                  value={data.defaultValue !== undefined ? data.defaultValue : ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                    if (data.onChange) {
+                      data.onChange({ defaultValue: val });
+                    }
+                  }}
+                  placeholder="Optional default"
+                  step="any"
+                  className="h-8 text-xs"
+                />
+                {data.defaultValue !== undefined && 
+                 data.allowedValues && 
+                 !data.allowedValues.includes(data.defaultValue) && (
+                  <div className="text-[10px] text-destructive flex items-center gap-1">
+                    <span>⚠</span>
+                    <span>Default must be in allowed values</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -343,14 +426,12 @@ function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
                     <div className="flex-1 text-xs bg-muted p-2 rounded font-medium">
                       {value}
                     </div>
-                    <Button
+                    <button
                       onClick={() => handleRemoveAllowedStrValue(value)}
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
+                      className="h-5 w-5 bg-muted border border-border flex items-center justify-center hover:border-red-500 transition-colors group shrink-0"
                     >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                      <X className="h-3 w-3 text-red-300 group-hover:text-red-500" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -384,6 +465,32 @@ function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
                 Add Value
               </Button>
             </div>
+
+            {/* Default Value for string dynamic inputs */}
+            {data.allowedStrValues && data.allowedStrValues.length > 0 && (
+              <div className="space-y-1.5 mt-3">
+                <Label className="text-xs text-muted-foreground">Default Value</Label>
+                <Input
+                  type="text"
+                  value={data.defaultStrValue || ''}
+                  onChange={(e) => {
+                    if (data.onChange) {
+                      data.onChange({ defaultStrValue: e.target.value || undefined });
+                    }
+                  }}
+                  placeholder="Optional default"
+                  className="h-8 text-xs"
+                />
+                {data.defaultStrValue && 
+                 data.allowedStrValues && 
+                 !data.allowedStrValues.includes(data.defaultStrValue) && (
+                  <div className="text-[10px] text-destructive flex items-center gap-1">
+                    <span>⚠</span>
+                    <span>Default must be in allowed values</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -401,14 +508,12 @@ function PricingNode({ data, selected, id }: NodeProps<PricingNodeData>) {
                       <div className="font-medium">{key}</div>
                       <div className="text-right">{value}</div>
                     </div>
-                    <Button
+                    <button
                       onClick={() => handleRemoveConditionalValue(key)}
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
+                      className="h-5 w-5 bg-muted border border-border flex items-center justify-center hover:border-red-500 transition-colors group shrink-0"
                     >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                      <X className="h-3 w-3 text-red-300 group-hover:text-red-500" />
+                    </button>
                   </div>
                 ))}
               </div>

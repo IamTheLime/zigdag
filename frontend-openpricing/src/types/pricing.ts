@@ -51,6 +51,8 @@ export interface PricingNode {
   constant_str_value?: string;
   allowed_values?: number[];
   allowed_str_values?: string[];
+  default_value?: number;
+  default_str_value?: string;
   conditional_values?: ConditionalValueMap;
   inputs: string[];
   metadata: NodeMetadata;
@@ -63,7 +65,7 @@ export interface NodeConfig {
   operation: OperationType;
   label: string;
   description: string;
-  category: 'input' | 'constant' | 'binary' | 'unary' | 'variadic';
+  category: 'common' | 'binary' | 'unary' | 'variadic';
   inputCount: number | 'variable'; // Expected number of inputs
   hasValue?: boolean; // Whether it has a constant_value
   hasWeights?: boolean; // Whether it uses weights

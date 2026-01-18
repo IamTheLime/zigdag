@@ -60,9 +60,9 @@ export function canConnect(
 ): { valid: boolean; reason?: string } {
   const targetDef = getNodeDefinition(targetOperation);
 
-  // Inputs and constants cannot have inputs
-  if (targetDef.category === 'input' || targetDef.category === 'constant') {
-    return { valid: false, reason: 'Input/constant nodes cannot have incoming connections' };
+  // Common nodes with no inputs (inputCount === 0) cannot have incoming connections
+  if (targetDef.inputCount === 0) {
+    return { valid: false, reason: 'This node cannot have incoming connections' };
   }
 
   // Check if we've exceeded the input count
@@ -87,11 +87,11 @@ export function getExpectedInputCount(operation: OperationType): number | 'varia
 }
 
 /**
- * Check if a node is an input/constant (has no dependencies)
+ * Check if a node is a source node (has no dependencies/inputs)
  */
 export function isSourceNode(operation: OperationType): boolean {
   const def = getNodeDefinition(operation);
-  return def.category === 'input' || def.category === 'constant';
+  return def.inputCount === 0;
 }
 
 /**

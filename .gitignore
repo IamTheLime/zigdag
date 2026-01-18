@@ -2,6 +2,9 @@
 .zig-cache/
 zig-out/
 *.o
+*.so
+*.dynlib
+**/node_modules/
 
 # Auto-generated files (built from JSON at compile time)
 backend-openpricing/src/generated_nodes.zig

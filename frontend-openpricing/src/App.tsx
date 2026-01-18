@@ -6,7 +6,6 @@ import ReactFlow, {
   useEdgesState,
   Controls,
   Background,
-  MiniMap,
   ReactFlowProvider,
   ReactFlowInstance,
   MarkerType,
@@ -19,19 +18,16 @@ import PricingNodeComponent from './components/PricingNode';
 import CustomEdge from './components/CustomEdge';
 import NodePalette from './components/NodePalette';
 import { CommandPalette } from './components/CommandPalette';
+import CustomMiniMap from './components/CustomMiniMap';
 import { ThemeProvider } from './components/theme-provider';
 import { ThemeToggle } from './components/theme-toggle';
 import { Button } from './components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import {
-  FileJson,
   Save,
-  Copy,
-  Trash2,
-  XCircle,
   BarChart3,
-  Workflow,
   Upload,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 const nodeTypes = {
@@ -66,6 +62,11 @@ function FlowEditor() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [modelName, setModelName] = useState<string>('my-pricing-model');
   const [modelVersion, setModelVersion] = useState<string>('1.0.0');
+  const [leftSidebarVisible, setLeftSidebarVisible] = useState(true);
+  
+  // Platform-aware keyboard shortcut
+  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const modKey = isMac ? '⌘' : 'Ctrl';
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -130,9 +131,21 @@ function FlowEditor() {
 
   const onNodeDataChange = useCallback(
     (nodeId: string, data: any) => {
+      // Check if customId is being changed
+      const isCustomIdChange = data.customId !== undefined;
+      const newCustomId = data.customId;
+      
       setNodes((nds) =>
         nds.map((node) => {
           if (node.id === nodeId) {
+            // If customId changed and it's not empty, update the node's actual ID
+            if (isCustomIdChange && newCustomId && newCustomId.trim() !== '') {
+              return {
+                ...node,
+                id: newCustomId,
+                data: { ...node.data, ...data },
+              };
+            }
             return {
               ...node,
               data: { ...node.data, ...data },
@@ -141,8 +154,23 @@ function FlowEditor() {
           return node;
         })
       );
+      
+      // If customId changed, update all edges that reference this node
+      if (isCustomIdChange && newCustomId && newCustomId.trim() !== '') {
+        setEdges((eds) =>
+          eds.map((edge) => {
+            if (edge.source === nodeId) {
+              return { ...edge, source: newCustomId };
+            }
+            if (edge.target === nodeId) {
+              return { ...edge, target: newCustomId };
+            }
+            return edge;
+          })
+        );
+      }
     },
-    [setNodes]
+    [setNodes, setEdges]
   );
 
   const deleteNode = useCallback(
@@ -185,13 +213,15 @@ function FlowEditor() {
       const inputs = sortedEdges.map((edge) => edge.source);
 
       return {
-        id: node.data.customId || node.id,
+        id: node.id, // Now uses the actual node ID which gets updated when customId changes
         operation: (node.data.operation as OperationType) || 'dynamic_input_num',
         weights: node.data.weights || [],
         constant_value: typeof node.data.value === 'number' ? node.data.value : 0.0,
         constant_str_value: node.data.stringValue,
         allowed_values: node.data.allowedValues || [],
         allowed_str_values: node.data.allowedStrValues || [],
+        default_value: node.data.defaultValue,
+        default_str_value: node.data.defaultStrValue,
         conditional_values: node.data.conditionalValues || {},
         inputs,
         metadata: {
@@ -209,8 +239,8 @@ function FlowEditor() {
     return json;
   }, [nodes, edges, modelName, modelVersion]);
 
-  const saveToPlayground = useCallback(() => {
-    const json = jsonOutput || exportToJson();
+  const saveJson = useCallback(() => {
+    const json = exportToJson();
 
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -221,23 +251,9 @@ function FlowEditor() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-
-    alert('Saved! Move pricing_model.json to playground/ directory and run ./test-playground.sh');
   }, [jsonOutput, exportToJson]);
 
-  const copyToClipboard = useCallback(() => {
-    if (!jsonOutput) return;
-    navigator.clipboard.writeText(jsonOutput);
-    alert('JSON copied to clipboard!');
-  }, [jsonOutput]);
 
-  const clearCanvas = useCallback(() => {
-    if (confirm('Clear all nodes? This cannot be undone.')) {
-      setNodes([]);
-      setEdges([]);
-      setJsonOutput('');
-    }
-  }, [setNodes, setEdges]);
 
   const importFromJson = useCallback(() => {
     const input = document.createElement('input');
@@ -292,6 +308,8 @@ function FlowEditor() {
                 stringValue: pricingNode.constant_str_value,
                 allowedValues: pricingNode.allowed_values || [],
                 allowedStrValues: pricingNode.allowed_str_values || [],
+                defaultValue: pricingNode.default_value,
+                defaultStrValue: pricingNode.default_str_value,
                 conditionalValues: pricingNode.conditional_values || {},
                 weights: pricingNode.weights || [],
               },
@@ -391,7 +409,7 @@ function FlowEditor() {
   };
 
   return (
-    <div className="w-screen h-screen flex bg-background">
+    <div className="w-screen h-screen flex flex-col bg-background">
       {/* Command Palette */}
       <CommandPalette
         open={commandPaletteOpen}
@@ -399,213 +417,124 @@ function FlowEditor() {
         onSelectNode={handleNodeCreate}
       />
 
-      {/* Node Palette */}
-      <NodePalette onNodeCreate={handleNodeCreate} />
+      {/* Top Toolbar */}
+      <div className="h-12 border-b border-border/40 bg-background flex items-center px-3 gap-3 shrink-0">
+        {/* Left: Sidebar toggle + Actions */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setLeftSidebarVisible(!leftSidebarVisible)}
+          >
+            {leftSidebarVisible ? (
+              <PanelLeftClose className="h-4 w-4" />
+            ) : (
+              <PanelLeftOpen className="h-4 w-4" />
+            )}
+          </Button>
+          <div className="h-4 w-px bg-border/40 mx-1" />
+          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={importFromJson}>
+            <Upload className="h-3.5 w-3.5 mr-1.5" />
+            Import
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-8 text-xs" 
+            onClick={saveJson}
+            disabled={!jsonOutput}
+          >
+            <Save className="h-3.5 w-3.5 mr-1.5" />
+            Save
+          </Button>
+          <div className="h-4 w-px bg-border/40 mx-1" />
+        </div>
 
-      {/* Main Flow Canvas */}
-      <div ref={reactFlowWrapper} className="flex-1 h-full relative">
-        {/* Theme Toggle - Top Right */}
-        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-          <div className="text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-2 py-1 rounded border">
-            Press{' '}
-            <kbd className="px-1 py-0.5 text-xs bg-muted rounded">⌘K</kbd>
-            {' '}or{' '}
-            <kbd className="px-1 py-0.5 text-xs bg-muted rounded">Ctrl+K</kbd>
-            {' '}to search
+        {/* Center: Editable Title */}
+        <div className="flex-1 flex items-center justify-center">
+          <input
+            type="text"
+            value={modelName}
+            onChange={(e) => setModelName(e.target.value)}
+            placeholder="Model Name"
+            className="text-sm font-medium bg-transparent border-0 focus:outline-none focus:ring-0 text-center max-w-xs px-2 py-1 rounded hover:bg-muted/50 focus:bg-muted/50 transition-colors"
+          />
+          <span className="text-xs text-muted-foreground mx-1">v</span>
+          <input
+            type="text"
+            value={modelVersion}
+            onChange={(e) => setModelVersion(e.target.value)}
+            placeholder="1.0.0"
+            className="text-sm text-muted-foreground bg-transparent border-0 focus:outline-none focus:ring-0 w-16 px-1 py-1 rounded hover:bg-muted/50 focus:bg-muted/50 transition-colors"
+          />
+        </div>
+
+        {/* Right: Theme + Search hint */}
+        <div className="flex items-center gap-2">
+          <div className="text-[11px] text-muted-foreground px-2">
+            <kbd className="px-1.5 py-0.5 text-[10px] bg-muted/50 rounded border border-border/40">{modKey}+K</kbd>
+            {' '}search
           </div>
           <ThemeToggle />
         </div>
-
-        <ReactFlow
-          nodes={nodesWithHandlers}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onInit={setReactFlowInstance}
-          onDrop={onDrop}
-          onDragOver={onDragOver}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          defaultEdgeOptions={defaultEdgeOptions}
-          fitView
-          deleteKeyCode="Delete"
-        >
-          <Controls />
-          <MiniMap />
-          <Background gap={12} size={1} />
-        </ReactFlow>
       </div>
 
-      {/* Right Panel */}
-      <div className="w-[400px] border-l bg-muted/30 overflow-auto p-6 space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Workflow className="h-6 w-6" />
-            OpenPricing Studio
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Build and export pricing models
-          </p>
-        </div>
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Node Palette */}
+        <NodePalette onNodeCreate={handleNodeCreate} isVisible={leftSidebarVisible} />
 
-        {/* Model Info */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Model Info</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1">
-              <label htmlFor="model-name" className="text-xs text-muted-foreground">
-                Package Name
-              </label>
-              <input
-                id="model-name"
-                type="text"
-                value={modelName}
-                onChange={(e) => setModelName(e.target.value)}
-                placeholder="my-pricing-model"
-                className="w-full h-8 px-2 text-sm border rounded bg-background"
-              />
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="model-version" className="text-xs text-muted-foreground">
-                Version
-              </label>
-              <input
-                id="model-version"
-                type="text"
-                value={modelVersion}
-                onChange={(e) => setModelVersion(e.target.value)}
-                placeholder="1.0.0"
-                className="w-full h-8 px-2 text-sm border rounded bg-background"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        <div className="space-y-2">
-          <Button onClick={importFromJson} className="w-full" size="lg" variant="default">
-            <Upload className="mr-2 h-4 w-4" />
-            Import Model
-          </Button>
-          <Button onClick={exportToJson} className="w-full" size="lg">
-            <FileJson className="mr-2 h-4 w-4" />
-            Generate JSON
-          </Button>
-          <Button
-            onClick={saveToPlayground}
-            disabled={!jsonOutput}
-            variant="secondary"
-            className="w-full"
-            size="lg"
+        {/* ReactFlow Canvas */}
+        <div ref={reactFlowWrapper} className="flex-1 relative">
+          <ReactFlow
+            nodes={nodesWithHandlers}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onInit={setReactFlowInstance}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            defaultEdgeOptions={defaultEdgeOptions}
+            defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
+            minZoom={0.1}
+            maxZoom={2}
+            fitView
+            fitViewOptions={{ padding: 0.3, maxZoom: 0.8 }}
+            deleteKeyCode="Delete"
           >
-            <Save className="mr-2 h-4 w-4" />
-            Save to Playground
-          </Button>
-          <Button
-            onClick={copyToClipboard}
-            disabled={!jsonOutput}
-            variant="outline"
-            className="w-full"
-            size="lg"
-          >
-            <Copy className="mr-2 h-4 w-4" />
-            Copy JSON
-          </Button>
-          <Button onClick={deleteSelected} variant="destructive" className="w-full">
-            <XCircle className="mr-2 h-4 w-4" />
-            Delete Selected
-          </Button>
-          <Button onClick={clearCanvas} variant="destructive" className="w-full">
-            <Trash2 className="mr-2 h-4 w-4" />
-            Clear Canvas
-          </Button>
+            <Controls />
+            <CustomMiniMap 
+              nodeColor={(node) => {
+                return node.data.color || 'hsl(var(--primary))';
+              }}
+              nodeStrokeWidth={3}
+              maskColor="hsl(var(--background) / 0.8)"
+            />
+            <Background gap={12} size={1} />
+          </ReactFlow>
         </div>
+      </div>
 
-        {/* Stats */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Model Stats
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Nodes:</span>
-              <span className="font-medium">{nodes.length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Connections:</span>
-              <span className="font-medium">{edges.length}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* JSON Output */}
-        {jsonOutput && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Graph JSON</CardTitle>
-              <CardDescription className="text-xs">
-                Generated pricing model configuration
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <pre className="bg-black text-green-400 dark:bg-gray-950 dark:text-green-300 p-3 rounded-md text-xs overflow-auto max-h-[300px] font-mono">
-                {jsonOutput}
-              </pre>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Workflow Instructions */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Workflow</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ol className="text-xs space-y-2 list-decimal list-inside text-muted-foreground">
-              <li>Click "Import Model" to load existing JSON</li>
-              <li>Or press <kbd className="bg-muted px-1 rounded">⌘K</kbd> to search for nodes</li>
-              <li>Or drag nodes from palette</li>
-              <li>Connect nodes by dragging from handles</li>
-              <li>Click connections to delete them</li>
-              <li>Edit values directly in nodes</li>
-              <li>Click "Generate JSON"</li>
-              <li>Click "Save to Playground"</li>
-              <li>
-                Move <code className="bg-muted px-1 rounded">pricing_model.json</code> to{' '}
-                <code className="bg-muted px-1 rounded">playground/</code>
-              </li>
-              <li>
-                Run <code className="bg-muted px-1 rounded">./test-playground.sh</code>
-              </li>
-              <li>Watch it compile and execute!</li>
-            </ol>
-          </CardContent>
-        </Card>
-
-        {/* Tips */}
-        <Card className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-amber-900 dark:text-amber-100">
-              Pro Tips
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="text-xs space-y-1 text-amber-800 dark:text-amber-200">
-              <li>• Use dynamic inputs for runtime user values</li>
-              <li>• Use constants for fixed configuration</li>
-              <li>• Conditional values map input keys to output values</li>
-              <li>• Hover over connections to delete them</li>
-              <li>• The backend compiles everything at build time!</li>
-              <li>• Zero runtime overhead = blazing fast!</li>
-            </ul>
-          </CardContent>
-        </Card>
+      {/* Bottom Status Bar */}
+      <div className="h-6 border-t border-border/40 bg-muted/20 flex items-center px-3 text-[11px] text-muted-foreground shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <BarChart3 className="h-3 w-3" />
+            <span>{nodes.length} nodes</span>
+          </div>
+          <div className="h-3 w-px bg-border/40" />
+          <div>{edges.length} connections</div>
+          {jsonOutput && (
+            <>
+              <div className="h-3 w-px bg-border/40" />
+              <div className="text-green-600 dark:text-green-400">JSON generated</div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

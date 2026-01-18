@@ -7,7 +7,6 @@ import {
   useReactFlow,
 } from 'reactflow';
 import { X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 export default function CustomEdge({
   id,
@@ -70,14 +69,12 @@ export default function CustomEdge({
           }}
           className="nodrag nopan"
         >
-          <Button
+          <button
             onClick={onEdgeClick}
-            variant="destructive"
-            size="icon"
-            className="h-7 w-7 rounded-full shadow-lg"
+            className="h-5 w-5 bg-muted border border-border flex items-center justify-center hover:border-red-500 transition-colors group shadow-lg"
           >
-            <X className="h-4 w-4" />
-          </Button>
+            <X className="h-3 w-3 text-red-300 group-hover:text-red-500" />
+          </button>
         </div>
       </EdgeLabelRenderer>
 
