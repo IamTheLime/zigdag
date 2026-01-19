@@ -228,7 +228,7 @@ fn writeOperation(writer: anytype, operation: []const u8, node: std.json.ObjectM
     } else if (std.mem.eql(u8, operation, "dynamic_input_num")) {
         // Dynamic numeric input
         const allowed_values = if (node.get("allowed_values")) |av| av.array.items else &[_]std.json.Value{};
-        try writer.writeAll(".{ .user_value = null, .allowed_values = &.{");
+        try writer.writeAll(".{ .allowed_values = &.{");
         for (allowed_values, 0..) |val, j| {
             if (j > 0) try writer.writeAll(", ");
             const allowed_val = switch (val) {
@@ -241,7 +241,7 @@ fn writeOperation(writer: anytype, operation: []const u8, node: std.json.ObjectM
         try writer.writeAll("} }");
     } else if (std.mem.eql(u8, operation, "dynamic_input_str")) {
         // Dynamic string input
-        try writer.writeAll(".{ .user_value = null, .allowed_values = null }");
+        try writer.writeAll(".{ .allowed_values = null }");
     } else {
         return error.UnknownOperation;
     }

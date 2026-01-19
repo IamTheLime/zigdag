@@ -64,15 +64,9 @@ pub const ConditionalValueInput = struct {
 };
 
 pub const ValueInputNum = struct {
-    // This is the only way that a user can
-    // provide an input to the system
-    user_value: ?f64,
     allowed_values: []const f64,
 };
 pub const ValueInputStr = struct {
-    // This is the only way that a user can
-    // provide an input to the system
-    user_value: ?[]u8,
     allowed_values: ?[]const []const u8,
 };
 
@@ -173,6 +167,20 @@ pub const PricingNode = struct {
             .add, .subtract, .multiply, .divide, .power, .modulo => 2,
             .clamp => 3, // value, min, max
             .max, .min, .weighted_sum => -1, // variable inputs
+        };
+    }
+    
+    pub fn outputType(comptime self: PricingNode) type {
+        return switch (self.operation) {
+             // String output nodes                                                         
+             .constant_input_str, .dynamic_input_str => []const u8,                         
+                                                                                            
+             // Numeric output nodes (everything else)                                      
+             .add, .subtract, .multiply, .divide, .power, .modulo,                          
+             .negate, .abs, .sqrt, .exp, .log, .sin, .cos,                                  
+             .weighted_sum, .max, .min, .clamp, .funnel,                                    
+             .conditional_value_input,  // Takes string, outputs number                     
+             .constant_input_num, .dynamic_input_num => f64,                                
         };
     }
 };
