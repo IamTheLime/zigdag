@@ -55,6 +55,16 @@ pub fn main() !void {
                     std.debug.print("\n", .{});
                 }
             },
+            .dynamic_input_str => |op| {
+                if (op.allowed_values != null and op.allowed_values.?.len > 0) {
+                    std.debug.print("      Allowed values: ", .{});
+                    inline for (op.allowed_values, 0..) |val, i| {
+                        if (i > 0) std.debug.print(", ", .{});
+                        std.debug.print("{d}", .{val});
+                    }
+                    std.debug.print("\n", .{});
+                }
+            },
             else => {},
         }
         const deps = comptime openpricing.comptime_parser.getDependencies(node.operation);
@@ -73,9 +83,16 @@ pub fn main() !void {
     // Set input values - this is the ONLY runtime operation besides the math!
     // All dynamic numeric inputs are set to 100.0 for testing
     inline for (PRICING_NODES) |node| {
-        if (node.operation == .dynamic_input_num) {
-            std.debug.print("  Setting {s} = 100.0\n", .{node.metadata.name});
-            try executor.setInput(node.node_id, 100.0);
+        switch (node.operation) {
+            .dynamic_input_num => {
+                std.debug.print("  Setting {s} = 100.0\n", .{node.metadata.name});
+                try executor.setInput(node.node_id, 100.0);
+            },
+            .dynamic_input_str => {
+                std.debug.print("  Setting {s} = 'tiago'\n", .{node.metadata.name});
+                try executor.setInput(node.node_id, "tiago");
+            },
+            else => {}
         }
     }
 

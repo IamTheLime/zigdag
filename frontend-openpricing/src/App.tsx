@@ -184,21 +184,9 @@ function FlowEditor() {
 
   const onNodeDataChange = useCallback(
     (nodeId: string, data: any) => {
-      // Check if customId is being changed
-      const isCustomIdChange = data.customId !== undefined;
-      const newCustomId = data.customId;
-      
       setNodes((nds) =>
         nds.map((node) => {
           if (node.id === nodeId) {
-            // If customId changed and it's not empty, update the node's actual ID
-            if (isCustomIdChange && newCustomId && newCustomId.trim() !== '') {
-              return {
-                ...node,
-                id: newCustomId,
-                data: { ...node.data, ...data },
-              };
-            }
             return {
               ...node,
               data: { ...node.data, ...data },
@@ -207,23 +195,8 @@ function FlowEditor() {
           return node;
         })
       );
-      
-      // If customId changed, update all edges that reference this node
-      if (isCustomIdChange && newCustomId && newCustomId.trim() !== '') {
-        setEdges((eds) =>
-          eds.map((edge) => {
-            if (edge.source === nodeId) {
-              return { ...edge, source: newCustomId };
-            }
-            if (edge.target === nodeId) {
-              return { ...edge, target: newCustomId };
-            }
-            return edge;
-          })
-        );
-      }
     },
-    [setNodes, setEdges]
+    [setNodes]
   );
 
   const deleteNode = useCallback(

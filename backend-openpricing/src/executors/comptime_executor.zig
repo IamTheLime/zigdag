@@ -4,6 +4,10 @@ const corenode = @import("../core/node.zig");
 const OperationType = corenode.OperationType;
 const PricingNode = corenode.PricingNode;
 
+const ExecutorError = error{
+    MappingNotFound,
+};
+
 /// Compile-time executor that works with static nodes from JSON
 /// All graph structure is resolved at compile time - only values are runtime!
 pub fn ComptimeExecutorFromNodes(comptime nodes: []const PricingNode) type {
@@ -40,7 +44,7 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const PricingNode) type {
         }
 
         /// Execute the pricing graph - completely inlined at compile time!
-        fn execute(self: *Self, comptime output_node_id: []const u8) !f64 {
+        fn execute(self: *Self, comptime output_node_id: []const u8) ExecutorError!f64 {
             // Process nodes in execution order
             inline for (execution_order) |node_idx| {
                 const node = nodes[node_idx];
@@ -74,22 +78,24 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const PricingNode) type {
                     // The input must be a constant_input_str
                     const str_value = switch (input_node.operation) {
                         .constant_input_str => |str_op| str_op.value,
+                        .dynamic_input_str => |str_op| str_op.user_value,
                         else => @compileError("conditional_value_input must have a constant_input_str as input"),
                     };
 
                     // Look up the value in the map at compile time
-                    comptime var result: f64 = 0.0;
-                    comptime var found = false;
+                    var result: f64 = 0.0;
+                    var found = false;
+                    const sv = str_value orelse "";  // or return, break, etc.
                     inline for (op.value_map) |mapping| {
-                        if (comptime std.mem.eql(u8, mapping.key, str_value)) {
+                        if (std.mem.eql(u8, mapping.key, sv)) {
                             result = mapping.value;
                             found = true;
                             break;
                         }
                     }
 
-                    if (comptime !found) {
-                        @compileError("No mapping found for value: " ++ str_value);
+                    if (!found) {
+                        return ExecutorError.MappingNotFound;
                     }
 
                     return result;
