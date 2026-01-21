@@ -135,7 +135,6 @@ pub fn build(b: *std.Build) void {
     // Create install step for the library into the Python package
     // Note: We need to copy the library after the package dir is created
     // For now, we'll use a fixed name that matches what's in the model
-    // TODO: Read the model name at build time
     const lib_install = b.addInstallArtifact(lib, .{
         .dest_dir = .{ .override = .{ .custom = "python-dist/zigdag" } },
     });
@@ -264,7 +263,6 @@ fn addCrossCompileStep(
     pygen_run.addArg(b.fmt("{s}/{s}", .{ b.install_path, pkg_base_dir }));
     pygen_run.addArg(lib_suffix);
 
-    // TODO: Read model name at build time
     const lib_install = b.addInstallArtifact(lib, .{
         .dest_dir = .{ .override = .{ .custom = b.fmt("{s}/zigdag", .{pkg_base_dir}) } },
     });

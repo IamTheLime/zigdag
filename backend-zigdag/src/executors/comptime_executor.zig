@@ -112,13 +112,9 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const PricingNode) type {
                     return result;
                 },
                 .constant_input_num => |op| {
-                    //TODO: Constants are hella fucked, I need to fix this
-                    // Constant values are baked into the graph at compile time
                     return op.value;
                 },
                 .constant_input_str => |op| {
-                    // For now, string constants return 0.0 (will be enhanced later)
-                    // This is a placeholder for string-based logic
                     return op.value;
                 },
 
