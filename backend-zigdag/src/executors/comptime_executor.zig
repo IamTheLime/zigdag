@@ -38,7 +38,7 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const PricingNode) type {
             const idx = comptime comptime_parser.getNodeIndex(nodes, node_id);
             self.numeric_node_values[idx] = value;
         }
-        pub fn setInputStr(self: *Self, comptime node_id: []const u8, value: []u8) !void {
+        pub fn setInputStr(self: *Self, comptime node_id: []const u8, value: []const u8) !void {
             const idx = comptime comptime_parser.getNodeIndex(nodes, node_id);
             self.string_node_values[idx] = value;
         }

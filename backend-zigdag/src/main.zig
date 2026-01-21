@@ -28,8 +28,8 @@ export fn set_input_node_value(node_id: [*:0]const u8, value: f64) c_int {
 
     // Find the node with this ID
     inline for (PRICING_NODES) |node| {
-        if (std.mem.eql(u8, node.node_id, id)) {
-            executor.setInput(node.node_id, value) catch return -2;
+        if (std.mem.eql(u8, node.node_id, id) and node.operation == .dynamic_input_num) {
+            executor.setInputNum(node.node_id, value) catch return -2;
             return 0;
         }
     }
@@ -174,7 +174,7 @@ export fn calculate_final_node_price_batch(
 
         inline for (dynamic_inputs, 0..) |node_id, i| {
             const value = input_values[row_offset + i];
-            batch_executor.setInput(node_id, value) catch return -2;
+            batch_executor.setInputNum(node_id, value) catch return -2;
         }
 
         // Calculate result

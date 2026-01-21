@@ -86,11 +86,11 @@ pub fn main() !void {
         switch (node.operation) {
             .dynamic_input_num => {
                 std.debug.print("  Setting {s} = 100.0\n", .{node.metadata.name});
-                try executor.setInput(node.node_id, 100.0);
+                try executor.setInputNum(node.node_id, 100.0);
             },
             .dynamic_input_str => {
                 std.debug.print("  Setting {s} = 'tiago'\n", .{node.metadata.name});
-                try executor.setInput(node.node_id, "tiago");
+                try executor.setInputStr(node.node_id, "tiago");
             },
             else => {},
         }
@@ -167,8 +167,21 @@ pub fn main() !void {
         while (row < batch_size) : (row += 1) {
             // Set inputs for this row
             inline for (dynamic_inputs, 0..) |node_id, input_idx| {
-                const value = batch_inputs[row * dynamic_inputs.len + input_idx];
-                try batch_executor.setInput(node_id, value);
+                const node_op = comptime blk: {
+                    for (PRICING_NODES) |node| {
+                        if (std.mem.eql(u8, node.node_id, node_id)) {
+                            break :blk node.operation;
+                        }
+                    }
+                    unreachable;
+                };
+
+                if (node_op == .dynamic_input_num) {
+                    const value = batch_inputs[row * dynamic_inputs.len + input_idx];
+                    try batch_executor.setInputNum(node_id, value);
+                } else {
+                    try batch_executor.setInputStr(node_id, "tiago");
+                }
             }
 
             // Calculate result
