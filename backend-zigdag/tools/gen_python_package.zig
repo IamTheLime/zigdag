@@ -45,7 +45,7 @@ pub fn main() !void {
     const root = parsed.value;
 
     // Extract model metadata
-    const model_name_raw = if (root.object.get("name")) |n| n.string else "zigdag";
+    const model_name_raw = if (root.object.get("name")) |n| n.string else "zmigdag";
     const model_version = if (root.object.get("version")) |v| v.string else "0.1.0";
 
     // Sanitize package name (replace - with _, lowercase)
@@ -287,15 +287,15 @@ fn generatePyprojectToml(allocator: std.mem.Allocator, name: []const u8, version
         \\]
         \\
         \\[project.urls]
-        \\"Homepage" = "https://github.com/anomalyco/zigdag"
+        \\"Homepage" = "https://github.com/IAmTheLime/zigdag"
         \\
         \\[tool.setuptools]
-        \\packages = ["{s}"]
+        \\packages = ["{s}", "zigdag"]
         \\
         \\[tool.setuptools.package-data]
-        \\"{s}" = ["*.so", "*.dylib", "py.typed"]
+        \\"zigdag" = ["*.so", "*.dylib", "py.typed"]
         \\
-    , .{ name, version, name, name });
+    , .{ name, version, name });
 
     // Write file to base_dir (pyproject.toml goes next to the package dir)
     const toml_path = try std.fmt.allocPrint(allocator, "{s}/pyproject.toml", .{base_dir});
