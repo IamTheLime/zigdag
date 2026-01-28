@@ -290,12 +290,12 @@ fn generatePyprojectToml(allocator: std.mem.Allocator, name: []const u8, version
         \\"Homepage" = "https://github.com/IAmTheLime/zigdag"
         \\
         \\[tool.setuptools]
-        \\packages = ["{s}", "zigdag"]
+        \\packages = ["{s}"]
         \\
         \\[tool.setuptools.package-data]
-        \\"zigdag" = ["*.so", "*.dylib", "py.typed"]
+        \\"{s}.zigdag" = ["*.so", "*.dylib", "py.typed"]
         \\
-    , .{ name, version, name });
+    , .{ name, version, name, name});
 
     // Write file to base_dir (pyproject.toml goes next to the package dir)
     const toml_path = try std.fmt.allocPrint(allocator, "{s}/pyproject.toml", .{base_dir});

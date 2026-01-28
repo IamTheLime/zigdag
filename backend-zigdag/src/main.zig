@@ -19,7 +19,7 @@ const PRICING_EXECUTOR = zigdag.ComptimeExecutorFromNodes(PRICING_NODES);
 // Thread-local executor instance
 threadlocal var executor: PRICING_EXECUTOR = PRICING_EXECUTOR.init();
 
-/// Set a dynamic input value by node ID
+/// Set a dynamic numeric input value by node ID
 /// @param node_id: C string containing the node ID
 /// @param value: The numeric value to set
 /// Returns 0 on success, non-zero on error
@@ -30,6 +30,25 @@ export fn set_input_node_value(node_id: [*:0]const u8, value: f64) c_int {
     inline for (PRICING_NODES) |node| {
         if (std.mem.eql(u8, node.node_id, id) and node.operation == .dynamic_input_num) {
             executor.setInputNum(node.node_id, value) catch return -2;
+            return 0;
+        }
+    }
+
+    return -3; // Node not found
+}
+
+/// Set a dynamic string input value by node ID
+/// @param node_id: C string containing the node ID
+/// @param value: C string containing the string value to set
+/// Returns 0 on success, non-zero on error
+export fn set_input_node_value_str(node_id: [*:0]const u8, value: [*:0]const u8) c_int {
+    const id = std.mem.span(node_id);
+    const val = std.mem.span(value);
+
+    // Find the node with this ID
+    inline for (PRICING_NODES) |node| {
+        if (std.mem.eql(u8, node.node_id, id) and node.operation == .dynamic_input_str) {
+            executor.setInputStr(node.node_id, val) catch return -2;
             return 0;
         }
     }

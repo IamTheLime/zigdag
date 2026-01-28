@@ -13,9 +13,8 @@ Before running this example:
 import random
 import time
 
-import my_pricing_model
 
-# def main():
+def main():
 #     print("=" * 60)
 #     print("ZigDag Batch Processing Example")
 #     print("=" * 60)
