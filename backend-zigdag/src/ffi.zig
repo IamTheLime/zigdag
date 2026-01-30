@@ -23,7 +23,7 @@ threadlocal var executor: PRICING_EXECUTOR = PRICING_EXECUTOR.init();
 /// @param node_id: C string containing the node ID
 /// @param value: The numeric value to set
 /// Returns 0 on success, non-zero on error
-export fn set_input_node_value(node_id: [*:0]const u8, value: f64) c_int {
+export fn set_input_node_value_num(node_id: [*:0]const u8, value: f64) c_int {
     const id = std.mem.span(node_id);
 
     // Find the node with this ID

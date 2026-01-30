@@ -35,7 +35,7 @@ pub fn build(b: *std.Build) void {
 
     // Shared Library (for FFI from Python/Node.js/etc)
     const lib_module = b.createModule(.{
-        .root_source_file = b.path("src/main.zig"),
+        .root_source_file = b.path("src/ffi.zig"),
         .target = target,
         .optimize = optimize,
         .imports = &.{
@@ -155,7 +155,7 @@ pub fn build(b: *std.Build) void {
 
     // Check Step (for ZLS)
     const lib_check_module = b.createModule(.{
-        .root_source_file = b.path("src/main.zig"),
+        .root_source_file = b.path("src/ffi.zig"),
         .target = target,
         .optimize = optimize,
         .imports = &.{
@@ -231,7 +231,7 @@ fn addCrossCompileStep(
 
     // Build library for the target
     const lib_module = b.createModule(.{
-        .root_source_file = b.path("src/main.zig"),
+        .root_source_file = b.path("src/ffi.zig"),
         .target = resolved_target,
         .optimize = .ReleaseFast,
         .imports = &.{

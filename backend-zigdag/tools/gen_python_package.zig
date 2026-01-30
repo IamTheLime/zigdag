@@ -1,5 +1,7 @@
 const std = @import("std");
 
+//NOTE: This file needs to be rebuilt, too much vibecodeing went around here
+
 /// This build tool generates a complete Python package from a pricing model JSON.
 /// It creates:
 ///   - <name>/_types.py: TypedDict definitions for inputs with Literal types for allowed values
@@ -45,7 +47,7 @@ pub fn main() !void {
     const root = parsed.value;
 
     // Extract model metadata
-    const model_name_raw = if (root.object.get("name")) |n| n.string else "zmigdag";
+    const model_name_raw = if (root.object.get("name")) |n| n.string else "zigdag";
     const model_version = if (root.object.get("version")) |v| v.string else "0.1.0";
 
     // Sanitize package name (replace - with _, lowercase)
@@ -381,8 +383,11 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\_lib = CDLL(str(_LIB_PATH))
         \\
         \\# Set up function signatures
-        \\_lib.set_input_node_value.restype = c_int
-        \\_lib.set_input_node_value.argtypes = [c_char_p, c_double]
+        \\_lib.set_input_node_value_num.restype = c_int
+        \\_lib.set_input_node_value_num.argtypes = [c_char_p, c_double]
+        \\
+        \\_lib.set_input_node_value_str.restype = c_int
+        \\_lib.set_input_node_value_str.argtypes = [c_char_p, c_char_p]
         \\
         \\_lib.calculate_final_node_price.restype = c_int
         \\_lib.calculate_final_node_price.argtypes = [POINTER(c_double)]
@@ -425,7 +430,7 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\        """Get the list of dynamic input node IDs."""
         \\        return DYNAMIC_INPUT_IDS.copy()
         \\    
-        \\    def set_input(self, node_id: str, value: float) -> None:
+        \\    def set_num_input(self, node_id: str, value: float) -> None:
         \\        """
         \\        Set a dynamic input value.
         \\        
@@ -436,7 +441,7 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\        Raises:
         \\            ValueError: If the node is not found
         \\        """
-        \\        result = _lib.set_input_node_value(
+        \\        result = _lib.set_input_node_value_num(
         \\            node_id.encode('utf-8'),
         \\            c_double(value)
         \\        )
@@ -446,7 +451,28 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\        elif result != 0:
         \\            raise RuntimeError(f"Failed to set input {{node_id}}: error code {{result}}")
         \\    
-        \\    def calculate(self, **inputs: float) -> float:
+        \\    def set_str_input(self, node_id: str, value: str) -> None:
+        \\        """
+        \\        Set a dynamic str input value.
+        \\        
+        \\        Args:
+        \\            node_id: The ID of the dynamic input node
+        \\            value: The numeric value to set
+        \\            
+        \\        Raises:
+        \\            ValueError: If the node is not found
+        \\        """
+        \\        result = _lib.set_input_node_value_str(
+        \\            node_id.encode('utf-8'),
+        \\            value.encode('utf-8'),
+        \\        )
+        \\        
+        \\        if result == -3:
+        \\            raise ValueError(f"Node not found: {{node_id}}")
+        \\        elif result != 0:
+        \\            raise RuntimeError(f"Failed to set input {{node_id}}: error code {{result}}")
+        \\
+        \\    def calculate(self, **inputs: float | str ) -> float:
         \\        """
         \\        Calculate the pricing result with the given inputs.
         \\        
@@ -457,7 +483,15 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\            The calculated price as a float.
         \\        """
         \\        for node_id, value in inputs.items():
-        \\            self.set_input(node_id, value)
+        \\            match value:
+        \\                case str():
+        \\                    self.set_str_input(node_id, value)
+        \\                case float() | int():
+        \\                    self.set_num_input(node_id, float(value))
+        \\                case _:
+        \\                    raise TypeError(
+        \\                        f"Unsupported value type for {{node_id}}: {{type(value).__name__}}"
+        \\                    )
         \\        
         \\        result = c_double()
         \\        ret = _lib.calculate_final_node_price(byref(result))
@@ -583,7 +617,9 @@ fn generateEngineStubFile(allocator: std.mem.Allocator, root: std.json.Value, ou
         \\    @property
         \\    def dynamic_input_ids(self) -> List[str]: ...
         \\    
-        \\    def set_input(self, node_id: str, value: float) -> None: ...
+        \\    def set_num_input(self, node_id: str, value: float) -> None: ...
+        \\
+        \\    def set_str_input(self, node_id: str, value: str) -> None: ...
         \\    
         \\    def calculate(
         \\        self,
@@ -600,15 +636,19 @@ fn generateEngineStubFile(allocator: std.mem.Allocator, root: std.json.Value, ou
         const node = node_value.object;
         const operation_str = node.get("operation").?.string;
 
-        if (std.mem.eql(u8, operation_str, "dynamic_input_num") or
-            std.mem.eql(u8, operation_str, "dynamic_input_str"))
-        {
-            const id = node.get("id").?.string;
+        const id = node.get("id").?.string;
+        if (std.mem.eql(u8, operation_str, "dynamic_input_num")) {
             if (!first) {
                 try writer.writeAll(",\n");
             }
             first = false;
             try writer.print("        {s}: float", .{id});
+        } else if (std.mem.eql(u8, operation_str, "dynamic_input_str")) {
+            if (!first) {
+                try writer.writeAll(",\n");
+            }
+            first = false;
+            try writer.print("        {s}: str", .{id});
         }
     }
 
