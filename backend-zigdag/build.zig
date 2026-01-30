@@ -105,6 +105,9 @@ pub fn build(b: *std.Build) void {
 
     const python_package_step = b.step("python-package", "Generate Python package with native library");
 
+    //python package depends on the library generation
+    python_package_step.dependOn(&lib.step);
+
     // Determine library suffix based on target
     const target_info = target.result;
     const lib_suffix: []const u8 = if (target_info.os.tag == .macos) "dylib" else "so";
@@ -153,7 +156,7 @@ pub fn build(b: *std.Build) void {
     addCrossCompileStep(b, "python-package-macos-x64", "x86_64-macos", mod);
     addCrossCompileStep(b, "python-package-macos-arm64", "aarch64-macos", mod);
 
-    // Check Step (for ZLS)
+    // Check Step (for ZLS) TODO: This adds massively to debugability, add any temaining deps here
     const lib_check_module = b.createModule(.{
         .root_source_file = b.path("src/ffi.zig"),
         .target = target,
