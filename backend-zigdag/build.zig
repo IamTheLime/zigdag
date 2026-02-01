@@ -1,18 +1,26 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
+const BuildCore = struct {
+    zigdag_root_mod: *std.Build.Module,
+    generated_nodes_mod: *std.Build.Module,
+    zigdag_ffi_lib: *std.Build.Step.Compile,
+    zigdag_json_to_zig_step: *std.Build.Step,
+};
 
+fn build_lib(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) BuildCore {
     // Library Module
-    const mod = b.addModule("zigdag", .{
+    const zigdag_root_mod = b.addModule("zigdag", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
     });
 
     // JSON to Zig Code Generation
     // Converts pricing_model.json into generated_nodes.zig at build time
-    const codegen_exe = b.addExecutable(.{
+    const json_to_zig_exe = b.addExecutable(.{
         .name = "json_to_zig",
         .root_module = b.createModule(.{
             .root_source_file = b.path("tools/json_to_zig.zig"),
@@ -21,45 +29,69 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    const codegen_run = b.addRunArtifact(codegen_exe);
-    codegen_run.addFileArg(b.path("models/pricing_model.json"));
-    const generated_file = codegen_run.addOutputFileArg("generated_nodes.zig");
+    const json_to_zig_run = b.addRunArtifact(json_to_zig_exe);
+    json_to_zig_run.addFileArg(b.path("models/pricing_model.json"));
+    const generated_nodes_zig_file = json_to_zig_run.addOutputFileArg("generated_nodes.zig");
 
-    const generated_mod = b.addModule("generated_nodes", .{
-        .root_source_file = generated_file,
+    const generated_nodes_mod = b.addModule("generated_nodes", .{
+        .root_source_file = generated_nodes_zig_file,
         .target = target,
         .imports = &.{
-            .{ .name = "zigdag", .module = mod },
+            .{ .name = "zigdag", .module = zigdag_root_mod },
         },
     });
 
     // Shared Library (for FFI from Python/Node.js/etc)
-    const lib_module = b.createModule(.{
+    const zigdag_ffi_module = b.createModule(.{
         .root_source_file = b.path("src/ffi.zig"),
         .target = target,
         .optimize = optimize,
         .imports = &.{
-            .{ .name = "zigdag", .module = mod },
-            .{ .name = "generated_nodes", .module = generated_mod },
+            .{ .name = "zigdag", .module = zigdag_root_mod }, // TODO: Consider refactoring this out
+            .{ .name = "generated_nodes", .module = generated_nodes_mod },
         },
     });
 
-    const lib = b.addLibrary(.{
+    const zigdag_ffi_lib = b.addLibrary(.{
         .name = "zigdag",
-        .root_module = lib_module,
+        .root_module = zigdag_ffi_module,
         .linkage = .dynamic, // Shared library
     });
 
-    b.installArtifact(lib);
+    b.installArtifact(zigdag_ffi_lib);
 
+    return .{ .zigdag_root_mod = zigdag_root_mod, .generated_nodes_mod = generated_nodes_mod, .zigdag_ffi_lib = zigdag_ffi_lib, .zigdag_json_to_zig_step = &json_to_zig_run.step };
+}
+
+fn setup_tests(
+    b: *std.Build,
+    bld_helpers: BuildCore,
+) void {
+    // Tests
+    const lib_tests = b.addTest(.{
+        .root_module = bld_helpers.zigdag_root_mod,
+    });
+
+    const run_lib_tests = b.addRunArtifact(lib_tests);
+
+    const test_step = b.step("test", "Run unit tests");
+    test_step.dependOn(&run_lib_tests.step);
+}
+
+fn setup_benchmark_build(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    bld_helpers: BuildCore,
+) void {
     // Benchmark Executable
     const benchmark_module = b.createModule(.{
         .root_source_file = b.path("benchmark/benchmark.zig"),
         .target = target,
         .optimize = optimize,
         .imports = &.{
-            .{ .name = "zigdag", .module = mod },
-            .{ .name = "generated_nodes", .module = generated_mod },
+            .{ .name = "zigdag", .module = bld_helpers.zigdag_root_mod },
+            .{ .name = "generated_nodes", .module = bld_helpers.generated_nodes_mod },
         },
     });
 
@@ -80,16 +112,15 @@ pub fn build(b: *std.Build) void {
 
     const run_step = b.step("run", "Run the benchmark");
     run_step.dependOn(&run_cmd.step);
+}
 
-    // Tests
-    const lib_tests = b.addTest(.{
-        .root_module = mod,
-    });
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
 
-    const run_lib_tests = b.addRunArtifact(lib_tests);
-
-    const test_step = b.step("test", "Run unit tests");
-    test_step.dependOn(&run_lib_tests.step);
+    const bld_core = build_lib(b, target, optimize);
+    setup_benchmark_build(b, target, optimize, bld_core);
+    setup_tests(b, bld_core);
 
     // =========================================================================
     // Python Package Generation
@@ -106,7 +137,7 @@ pub fn build(b: *std.Build) void {
     const python_package_step = b.step("python-package", "Generate Python package with native library");
 
     //python package depends on the library generation
-    python_package_step.dependOn(&lib.step);
+    python_package_step.dependOn(&bld_core.zigdag_ffi_lib.step);
 
     // Determine library suffix based on target
     const target_info = target.result;
@@ -133,13 +164,17 @@ pub fn build(b: *std.Build) void {
     pygen_run.addArg(lib_suffix);
 
     // The Python generator depends on the codegen step (to validate the model)
-    pygen_run.step.dependOn(&codegen_run.step);
+    pygen_run.step.dependOn(bld_core.zigdag_json_to_zig_step);
 
     // Create install step for the library into the Python package
     // Note: We need to copy the library after the package dir is created
     // For now, we'll use a fixed name that matches what's in the model
-    const lib_install = b.addInstallArtifact(lib, .{
-        .dest_dir = .{ .override = .{ .custom = "python-dist/zigdag" } },
+    const lib_install = b.addInstallArtifact(bld_core.zigdag_ffi_lib, .{
+        .dest_dir = .{
+            .override = .{
+                .custom = "python-dist/zigdag",
+            },
+        },
     });
 
     // Python package step depends on both the library and the Python files
@@ -151,10 +186,10 @@ pub fn build(b: *std.Build) void {
     // =========================================================================
 
     // Add convenience steps for common cross-compilation targets
-    addCrossCompileStep(b, "python-package-linux-x64", "x86_64-linux", mod);
-    addCrossCompileStep(b, "python-package-linux-arm64", "aarch64-linux", mod);
-    addCrossCompileStep(b, "python-package-macos-x64", "x86_64-macos", mod);
-    addCrossCompileStep(b, "python-package-macos-arm64", "aarch64-macos", mod);
+    addCrossCompileStep(b, "python-package-linux-x64", "x86_64-linux", bld_core.zigdag_root_mod);
+    addCrossCompileStep(b, "python-package-linux-arm64", "aarch64-linux", bld_core.zigdag_root_mod);
+    addCrossCompileStep(b, "python-package-macos-x64", "x86_64-macos", bld_core.zigdag_root_mod);
+    addCrossCompileStep(b, "python-package-macos-arm64", "aarch64-macos", bld_core.zigdag_root_mod);
 
     // Check Step (for ZLS) TODO: This adds massively to debugability, add any temaining deps here
     const lib_check_module = b.createModule(.{
@@ -162,8 +197,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .imports = &.{
-            .{ .name = "zigdag", .module = mod },
-            .{ .name = "generated_nodes", .module = generated_mod },
+            .{ .name = "zigdag", .module = bld_core.zigdag_root_mod },
+            .{ .name = "generated_nodes", .module = bld_core.generated_nodes_mod },
         },
     });
 
@@ -178,8 +213,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .imports = &.{
-            .{ .name = "zigdag", .module = mod },
-            .{ .name = "generated_nodes", .module = generated_mod },
+            .{ .name = "zigdag", .module = bld_core.zigdag_root_mod },
+            .{ .name = "generated_nodes", .module = bld_core.generated_nodes_mod },
         },
     });
 
@@ -189,7 +224,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const test_check = b.addTest(.{
-        .root_module = mod,
+        .root_module = bld_core.zigdag_root_mod,
     });
 
     const check = b.step("check", "Check if zigdag compiles");
