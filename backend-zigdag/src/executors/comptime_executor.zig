@@ -2,7 +2,7 @@ const std = @import("std");
 const comptime_parser = @import("../core/comptime_parser.zig");
 const corenode = @import("../core/node.zig");
 const OperationType = corenode.OperationType;
-const PricingNode = corenode.PricingNode;
+const DAGNode = corenode.DAGNode;
 
 const ExecutorError = error{
     MappingNotFound,
@@ -10,7 +10,7 @@ const ExecutorError = error{
 
 /// Compile-time executor that works with static nodes from JSON
 /// All graph structure is resolved at compile time - only values are runtime!
-pub fn ComptimeExecutorFromNodes(comptime nodes: []const PricingNode) type {
+pub fn ComptimeExecutorFromNodes(comptime nodes: []const DAGNode) type {
     const node_count = nodes.len;
     const execution_order = comptime_parser.computeExecutionOrder(nodes);
     const _funnel_node = comptime blk: {
@@ -69,7 +69,7 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const PricingNode) type {
         }
 
         /// Evaluate a single node - completely inlined using the typed union!
-        fn evaluateNode(self: *Self, comptime node: PricingNode) !node.outputType() {
+        fn evaluateNode(self: *Self, comptime node: DAGNode) !node.outputType() {
             @setEvalBranchQuota(10000); // Increase quota for complex conditional lookups
             return switch (node.operation) {
                 .dynamic_input_num => |_| {

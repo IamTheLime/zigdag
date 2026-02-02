@@ -46,13 +46,13 @@ pub fn main() !void {
         \\// This file is generated at build time by tools/json_to_zig.zig
         \\
         \\const zigdag = @import("zigdag");
-        \\const PricingNode = zigdag.node.PricingNode;
+        \\const DAGNode = zigdag.node.DAGNode;
         \\const NodeOperation = zigdag.node.NodeOperation;
-        \\const NodeMetadata = zigdag.node.PricingNode.NodeMetadata;
+        \\const NodeMetadata = zigdag.node.DAGNode.NodeMetadata;
         \\
         \\/// Compile-time pricing nodes generated from JSON
         \\/// These are fully static and live in the .rodata section
-        \\pub const nodes = &[_]PricingNode{
+        \\pub const nodes = &[_]DAGNode{
         \\
     );
 

@@ -2,7 +2,7 @@ const std = @import("std");
 const node_module = @import("../core/node.zig");
 const OperationType = node_module.OperationType;
 const NodeOperation = node_module.NodeOperation;
-const PricingNode = node_module.PricingNode;
+const DAGNode = node_module.DAGNode;
 
 /// Extract all dependency node IDs from a NodeOperation at compile time
 pub fn getDependencies(comptime operation: NodeOperation) []const []const u8 {
@@ -42,7 +42,7 @@ pub fn getDependencies(comptime operation: NodeOperation) []const []const u8 {
 }
 
 /// Find node index by ID at compile time
-pub fn getNodeIndex(comptime nodes: []const PricingNode, comptime id: []const u8) usize {
+pub fn getNodeIndex(comptime nodes: []const DAGNode, comptime id: []const u8) usize {
     for (nodes, 0..) |node, i| {
         if (std.mem.eql(u8, node.node_id, id)) {
             return i;
@@ -53,7 +53,7 @@ pub fn getNodeIndex(comptime nodes: []const PricingNode, comptime id: []const u8
 
 /// Perform topological sort at compile time using Kahn's algorithm
 /// This ensures nodes are executed in dependency order (DAG)
-pub fn computeExecutionOrder(comptime nodes: []const PricingNode) []const usize {
+pub fn computeExecutionOrder(comptime nodes: []const DAGNode) []const usize {
     comptime {
         // Increase quota for complex graphs 
         // TODO: Consider removing some of the inline behabviour 

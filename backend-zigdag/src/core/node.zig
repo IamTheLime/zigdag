@@ -113,7 +113,7 @@ pub const NodeOperation = union(OperationType) {
 };
 
 /// A pricing node in the computational graph
-pub const PricingNode = struct {
+pub const DAGNode = struct {
     node_id: []const u8,
     operation: NodeOperation,
     metadata: NodeMetadata,
@@ -129,8 +129,8 @@ pub const PricingNode = struct {
         allocator: std.mem.Allocator,
         id: []const u8,
         operation: NodeOperation,
-    ) !PricingNode {
-        return PricingNode{
+    ) !DAGNode {
+        return DAGNode{
             .node_id = try allocator.dupe(u8, id),
             .operation = operation,
             .metadata = .{
@@ -142,7 +142,7 @@ pub const PricingNode = struct {
         };
     }
 
-    pub fn deinit(self: *PricingNode, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *DAGNode, allocator: std.mem.Allocator) void {
         allocator.free(self.node_id);
         allocator.free(self.metadata.name);
         if (self.metadata.description.len > 0) {
@@ -151,7 +151,7 @@ pub const PricingNode = struct {
     }
 
     /// Returns true if this node requires multiple inputs
-    pub fn isMultiInput(self: PricingNode) bool {
+    pub fn isMultiInput(self: DAGNode) bool {
         return switch (self.operation) {
             .add, .subtract, .multiply, .divide, .power, .modulo, .weighted_sum, .max, .min, .clamp => true,
             else => false,
@@ -159,7 +159,7 @@ pub const PricingNode = struct {
     }
 
     /// Returns the expected number of inputs (-1 means variable)
-    pub fn expectedDependencyNodeCount(self: PricingNode) i32 {
+    pub fn expectedDependencyNodeCount(self: DAGNode) i32 {
         return switch (self.operation) {
             .constant_input_num, .constant_input_str, .dynamic_input_num, .dynamic_input_str => 0,
             .conditional_value_input, .funnel => 1,
@@ -170,7 +170,7 @@ pub const PricingNode = struct {
         };
     }
     
-    pub fn outputType(comptime self: PricingNode) type {
+    pub fn outputType(comptime self: DAGNode) type {
         return switch (self.operation) {
              // String output nodes                                                         
              .constant_input_str, .dynamic_input_str => []const u8,                         
@@ -185,27 +185,27 @@ pub const PricingNode = struct {
     }
 };
 
-test "PricingNode init and deinit" {
+test "DAGNode init and deinit" {
     const allocator = std.testing.allocator;
     const operation = NodeOperation{ .add = .{
         .left_input_node_id = "node1",
         .right_input_node_id = "node2",
     } };
-    var node = try PricingNode.init(allocator, "test_node", operation);
+    var node = try DAGNode.init(allocator, "test_node", operation);
     defer node.deinit(allocator);
 
     try std.testing.expectEqualStrings("test_node", node.node_id);
     try std.testing.expectEqual(OperationType.add, @as(OperationType, node.operation));
 }
 
-test "PricingNode input expectations" {
+test "DAGNode input expectations" {
     const allocator = std.testing.allocator;
 
     const add_operation = NodeOperation{ .add = .{
         .left_input_node_id = "node1",
         .right_input_node_id = "node2",
     } };
-    var add_node = try PricingNode.init(allocator, "add", add_operation);
+    var add_node = try DAGNode.init(allocator, "add", add_operation);
     defer add_node.deinit(allocator);
 
     try std.testing.expect(add_node.isMultiInput());
@@ -214,7 +214,7 @@ test "PricingNode input expectations" {
     const constant_operation = NodeOperation{ .constant_input_num = .{
         .value = 42.0,
     } };
-    var constant_node = try PricingNode.init(allocator, "const", constant_operation);
+    var constant_node = try DAGNode.init(allocator, "const", constant_operation);
     defer constant_node.deinit(allocator);
 
     try std.testing.expect(!constant_node.isMultiInput());
