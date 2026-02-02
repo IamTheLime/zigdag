@@ -219,7 +219,7 @@ pub fn main() !void {
 
     std.debug.print("Workflow:\n", .{});
     std.debug.print("  1. Design model in frontend (React Flow UI)\n", .{});
-    std.debug.print("  2. Export JSON to models/pricing_model.json\n", .{});
+    std.debug.print("  2. Export JSON to models/dag_model.json\n", .{});
     std.debug.print("  3. Rebuild - nodes auto-generated at compile time!\n", .{});
     std.debug.print("  4. New model is baked into the binary\n", .{});
     std.debug.print("  5. Use from Python with ctypes/cffi\n", .{});

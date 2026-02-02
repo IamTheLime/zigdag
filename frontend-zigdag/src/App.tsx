@@ -272,7 +272,7 @@ function FlowEditor() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'pricing_model.json';
+    link.download = 'dag_model.json';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

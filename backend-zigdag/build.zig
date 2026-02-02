@@ -19,7 +19,7 @@ fn build_lib(
     });
 
     // JSON to Zig Code Generation
-    // Converts pricing_model.json into generated_nodes.zig at build time
+    // Converts dag_model.json into generated_nodes.zig at build time
     const json_to_zig_exe = b.addExecutable(.{
         .name = "json_to_zig",
         .root_module = b.createModule(.{
@@ -30,7 +30,7 @@ fn build_lib(
     });
 
     const json_to_zig_run = b.addRunArtifact(json_to_zig_exe);
-    json_to_zig_run.addFileArg(b.path("models/pricing_model.json"));
+    json_to_zig_run.addFileArg(b.path("models/dag_model.json"));
     const generated_nodes_zig_file = json_to_zig_run.addOutputFileArg("generated_nodes.zig");
 
     const generated_nodes_mod = b.addModule("generated_nodes", .{
@@ -155,7 +155,7 @@ pub fn build(b: *std.Build) void {
 
     // The Python generator reads the model name from JSON and creates the package directory
     const pygen_run = b.addRunArtifact(pygen_exe);
-    pygen_run.addFileArg(b.path("models/pricing_model.json"));
+    pygen_run.addFileArg(b.path("models/dag_model.json"));
 
     // Output base directory: zig-out/python-dist/
     // The generator will create <base>/<package_name>/ based on the JSON
@@ -256,7 +256,7 @@ fn addCrossCompileStep(
     });
 
     const codegen_run = b.addRunArtifact(codegen_exe);
-    codegen_run.addFileArg(b.path("models/pricing_model.json"));
+    codegen_run.addFileArg(b.path("models/dag_model.json"));
     const generated_file = codegen_run.addOutputFileArg("generated_nodes.zig");
 
     const generated_mod = b.addModule(b.fmt("generated_nodes_{s}", .{target_str}), .{
@@ -297,7 +297,7 @@ fn addCrossCompileStep(
     const pkg_base_dir = b.fmt("python-dist-{s}", .{target_str});
 
     const pygen_run = b.addRunArtifact(pygen_exe);
-    pygen_run.addFileArg(b.path("models/pricing_model.json"));
+    pygen_run.addFileArg(b.path("models/dag_model.json"));
     pygen_run.addArg(b.fmt("{s}/{s}", .{ b.install_path, pkg_base_dir }));
     pygen_run.addArg(lib_suffix);
 

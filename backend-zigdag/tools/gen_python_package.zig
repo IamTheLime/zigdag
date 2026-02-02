@@ -109,7 +109,7 @@ fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_
         \\"""
         \\Type definitions for ZigDag.
         \\
-        \\Auto-generated from pricing_model.json.
+        \\Auto-generated from dag_model.json.
         \\Do not edit manually.
         \\"""
         \\
@@ -595,7 +595,7 @@ fn generateEngineStubFile(allocator: std.mem.Allocator, root: std.json.Value, ou
         \\"""
         \\Type stubs for ZigDag Engine.
         \\
-        \\Auto-generated from pricing_model.json.
+        \\Auto-generated from dag_model.json.
         \\Do not edit manually.
         \\"""
         \\

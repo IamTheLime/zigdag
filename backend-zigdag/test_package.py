@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, "./zig-out/python-dist")
 
-import my_pricing_model
+import my_dag_model
 
 
 def main():
@@ -14,7 +14,7 @@ def main():
     print("=" * 60)
 
     # Create engine
-    engine = my_pricing_model.PricingEngine()
+    engine = my_dag_model.PricingEngine()
     dynamic_input_ids = engine.dynamic_input_ids
 
     print(f"Found {len(dynamic_input_ids)} dynamic inputs:")

@@ -42,7 +42,7 @@ pub fn main() !void {
     // Write header
     try writer.writeAll(
         \\// AUTO-GENERATED FILE - DO NOT EDIT
-        \\// Generated from pricing_model.json
+        \\// Generated from dag_model.json
         \\// This file is generated at build time by tools/json_to_zig.zig
         \\
         \\const zigdag = @import("zigdag");

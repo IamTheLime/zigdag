@@ -5,11 +5,11 @@ import sys
 
 sys.path.insert(0, "./zig-out/python-dist")
 
-import my_pricing_model
+import my_dag_model
 
 
 def main():
-    engine = my_pricing_model.PricingEngine()
+    engine = my_dag_model.PricingEngine()
     print("Available input IDs:", engine.dynamic_input_ids)
 
     # Try to inspect the engine
