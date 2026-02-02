@@ -98,38 +98,29 @@ fn sanitizePackageName(name: []const u8, buf: []u8) []const u8 {
     return buf[0..i];
 }
 
-fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_dir: []const u8) !void {
-    var output = try std.ArrayList(u8).initCapacity(allocator, 4096);
-    defer output.deinit(allocator);
-
-    const writer = output.writer(allocator);
-
-    // Header
-    try writer.writeAll(
-        \\"""
-        \\Type definitions for ZigDag.
-        \\
-        \\Auto-generated from dag_model.json.
-        \\Do not edit manually.
-        \\"""
-        \\
-        \\from __future__ import annotations
-        \\
-        \\from typing import List, Literal, Mapping, Sequence, TypedDict, Union
-        \\
-        \\
-    );
-
+fn generateCalcInterface(writer: anytype, root: std.json.Value, dag_type: enum { batch, transactional }) !void {
     // Collect dynamic inputs
     const nodes = root.object.get("nodes") orelse return error.NoNodesInJson;
     const nodes_array = nodes.array;
 
+    // Pre-compute batch wrappers
+    const seq_prefix = if (dag_type == .batch) "Sequence[" else "";
+    const seq_suffix = if (dag_type == .batch) "]" else "";
+
     // Generate DAGInputs TypedDict
-    try writer.writeAll(
-        \\class DAGInputs(TypedDict, total=True):
-        \\    """Dynamic inputs for the pricing model."""
-        \\
-    );
+    if (dag_type == .transactional) {
+        try writer.writeAll(
+            \\class DAGInputs(TypedDict, total=True):
+            \\    """Dynamic inputs for the pricing model."""
+            \\
+        );
+    } else {
+        try writer.writeAll(
+            \\class DAGBatchInputs(TypedDict, total=True):
+            \\    """Batch inputs for the pricing model (sequences)."""
+            \\
+        );
+    }
 
     var has_inputs = false;
     for (nodes_array.items) |node_value| {
@@ -147,7 +138,7 @@ fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_
 
             if (allowed_values.len > 0) {
                 // Use Literal type for constrained values
-                try writer.print("    {s}: Literal[", .{id});
+                try writer.print("    {s}: {s}Literal[", .{ id, seq_prefix });
                 for (allowed_values, 0..) |val, j| {
                     if (j > 0) try writer.writeAll(", ");
                     const num_val = switch (val) {
@@ -157,9 +148,9 @@ fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_
                     };
                     try writer.print("{d}", .{num_val});
                 }
-                try writer.writeAll("]\n");
+                try writer.print("]{s}\n", .{seq_suffix});
             } else {
-                try writer.print("    {s}: float\n", .{id});
+                try writer.print("    {s}: {s}float{s}\n", .{ id, seq_prefix, seq_suffix });
             }
 
             if (description.len > 0) {
@@ -176,14 +167,14 @@ fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_
 
             if (allowed_str_values.len > 0) {
                 // Use Literal type for constrained string values
-                try writer.print("    {s}: Literal[", .{id});
+                try writer.print("    {s}: {s}Literal[", .{ id, seq_prefix });
                 for (allowed_str_values, 0..) |val, j| {
                     if (j > 0) try writer.writeAll(", ");
                     try writer.print("\"{s}\"", .{val.string});
                 }
-                try writer.writeAll("]\n");
+                try writer.print("]{s}\n", .{seq_suffix});
             } else {
-                try writer.print("    {s}: str\n", .{id});
+                try writer.print("    {s}: {s}str{s}\n", .{ id, seq_prefix, seq_suffix });
             }
 
             if (description.len > 0) {
@@ -197,58 +188,32 @@ fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_
     }
 
     try writer.writeAll("\n\n");
+}
 
-    // Generate DAGBatchInputs TypedDict
+fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_dir: []const u8) !void {
+    var output = try std.ArrayList(u8).initCapacity(allocator, 4096);
+    defer output.deinit(allocator);
+
+    const writer = output.writer(allocator);
+
+    // Header
     try writer.writeAll(
-        \\class DAGBatchInputs(TypedDict, total=True):
-        \\    """Batch inputs for the pricing model (sequences)."""
+        \\"""
+        \\Type definitions for ZigDag.
+        \\
+        \\Auto-generated from dag_model.json.
+        \\Do not edit manually.
+        \\"""
+        \\
+        \\from __future__ import annotations
+        \\
+        \\from typing import List, Literal, Sequence, TypedDict
+        \\
         \\
     );
 
-    has_inputs = false;
-    for (nodes_array.items) |node_value| {
-        const node = node_value.object;
-        const operation_str = node.get("operation").?.string;
-
-        if (std.mem.eql(u8, operation_str, "dynamic_input_num") or
-            std.mem.eql(u8, operation_str, "dynamic_input_str"))
-        {
-            has_inputs = true;
-            const id = node.get("id").?.string;
-            const metadata = if (node.get("metadata")) |m| m.object else null;
-            const description = if (metadata) |m| if (m.get("description")) |d| d.string else "" else "";
-
-            try writer.print("    {s}: Sequence[float]\n", .{id});
-
-            if (description.len > 0) {
-                try writer.print("    \"\"\"Sequence of values: {s}\"\"\"\n", .{description});
-            }
-        }
-    }
-
-    if (!has_inputs) {
-        try writer.writeAll("    pass\n");
-    }
-
-    try writer.writeAll("\n\n");
-
-    // Generate list of dynamic input IDs
-    try writer.writeAll("# Ordered list of dynamic input node IDs\n");
-    try writer.writeAll("DYNAMIC_INPUT_IDS: List[str] = [\n");
-
-    for (nodes_array.items) |node_value| {
-        const node = node_value.object;
-        const operation_str = node.get("operation").?.string;
-
-        if (std.mem.eql(u8, operation_str, "dynamic_input_num") or
-            std.mem.eql(u8, operation_str, "dynamic_input_str"))
-        {
-            const id = node.get("id").?.string;
-            try writer.print("    \"{s}\",\n", .{id});
-        }
-    }
-
-    try writer.writeAll("]\n");
+    try generateCalcInterface(&writer, root, .transactional);
+    try generateCalcInterface(&writer, root, .batch);
 
     // Write file
     const types_path = try std.fmt.allocPrint(allocator, "{s}/_types.py", .{output_dir});
@@ -367,8 +332,6 @@ fn generateEngineFile(
         \\
         \\from __future__ import annotations
         \\
-        \\import ctypes
-        \\import os
         \\from ctypes import CDLL, POINTER, byref, c_char_p, c_double, c_int
         \\from pathlib import Path
         \\from typing import List, Mapping, Sequence
@@ -606,7 +569,7 @@ fn generateEngineStubFile(allocator: std.mem.Allocator, model_name: []const u8, 
         \\
         \\from __future__ import annotations
         \\
-        \\from typing import List, Mapping, Sequence, Unpack
+        \\from typing import List, Unpack
         \\
         \\from {s}._types import DAGInputs, DAGBatchInputs
         \\
