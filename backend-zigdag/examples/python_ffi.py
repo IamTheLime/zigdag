@@ -21,7 +21,7 @@ def main():
 #     print()
 #
 #     # Create engine
-#     engine = PricingEngine()
+#     engine = DAGEngine()
 #     dynamic_input_ids = engine.dynamic_input_ids
 #
 #     print(f"Found {len(dynamic_input_ids)} dynamic inputs:")

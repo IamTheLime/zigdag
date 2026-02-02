@@ -70,7 +70,7 @@ pub fn main() !void {
     try generateInitFile(allocator, package_dir);
 
     // Generate engine.py (static content)
-    try generateEngineFile(allocator, package_dir, lib_suffix);
+    try generateEngineFile(allocator, model_name, package_dir, lib_suffix);
 
     // Generate py.typed marker
     try generatePyTypedMarker(package_dir);
@@ -124,9 +124,9 @@ fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_
     const nodes = root.object.get("nodes") orelse return error.NoNodesInJson;
     const nodes_array = nodes.array;
 
-    // Generate PricingInputs TypedDict
+    // Generate DAGInputs TypedDict
     try writer.writeAll(
-        \\class PricingInputs(TypedDict, total=True):
+        \\class DAGInputs(TypedDict, total=True):
         \\    """Dynamic inputs for the pricing model."""
         \\
     );
@@ -198,9 +198,9 @@ fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_
 
     try writer.writeAll("\n\n");
 
-    // Generate PricingBatchInputs TypedDict
+    // Generate DAGBatchInputs TypedDict
     try writer.writeAll(
-        \\class PricingBatchInputs(TypedDict, total=True):
+        \\class DAGBatchInputs(TypedDict, total=True):
         \\    """Batch inputs for the pricing model (sequences)."""
         \\
     );
@@ -292,12 +292,12 @@ fn generatePyprojectToml(allocator: std.mem.Allocator, name: []const u8, version
         \\"Homepage" = "https://github.com/IAmTheLime/zigdag"
         \\
         \\[tool.setuptools]
-        \\packages = ["{s}"]
+        \\packages = ["{s}", "zigdag"]
         \\
         \\[tool.setuptools.package-data]
-        \\"{s}.zigdag" = ["*.so", "*.dylib", "py.typed"]
+        \\zigdag = ["*.so", "*.dylib", "py.typed"]
         \\
-    , .{ name, version, name, name});
+    , .{ name, version, name });
 
     // Write file to base_dir (pyproject.toml goes next to the package dir)
     const toml_path = try std.fmt.allocPrint(allocator, "{s}/pyproject.toml", .{base_dir});
@@ -318,19 +318,19 @@ fn generateInitFile(allocator: std.mem.Allocator, output_dir: []const u8) !void 
         \\compiled from a pricing model graph.
         \\
         \\Usage:
-        \\    from <package> import PricingEngine
+        \\    from <package> import DAGEngine
         \\    
-        \\    engine = PricingEngine()
+        \\    engine = DAGEngine()
         \\    result = engine.calculate(
         \\        input_1=100.0,
         \\        input_2=200.0
         \\    )
         \\"""
         \\
-        \\from .engine import PricingEngine
-        \\from ._types import PricingInputs, PricingBatchInputs, DYNAMIC_INPUT_IDS
+        \\from .engine import DAGEngine
+        \\from ._types import DAGInputs, DAGBatchInputs, DYNAMIC_INPUT_IDS
         \\
-        \\__all__ = ["PricingEngine", "PricingInputs", "PricingBatchInputs", "DYNAMIC_INPUT_IDS"]
+        \\__all__ = ["DAGEngine", "DAGInputs", "DAGBatchInputs", "DYNAMIC_INPUT_IDS"]
         \\
     ;
 
@@ -343,7 +343,12 @@ fn generateInitFile(allocator: std.mem.Allocator, output_dir: []const u8) !void 
     try output_file.writeAll(content);
 }
 
-fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_suffix: []const u8) !void {
+fn generateEngineFile(
+    allocator: std.mem.Allocator,
+    model_name: []const u8,
+    output_dir: []const u8,
+    lib_suffix: []const u8,
+) !void {
     var output = try std.ArrayList(u8).initCapacity(allocator, 8192);
     defer output.deinit(allocator);
 
@@ -368,11 +373,11 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\from pathlib import Path
         \\from typing import List, Mapping, Sequence
         \\
-        \\from ._types import DYNAMIC_INPUT_IDS
+        \\from {s}._types import DYNAMIC_INPUT_IDS
         \\
         \\
         \\# Load the native library from the package directory
-        \\_LIB_PATH = Path(__file__).parent / "{s}"
+        \\_LIB_PATH = Path(__file__).parent.parent / "zigdag" / "{s}"
         \\
         \\if not _LIB_PATH.exists():
         \\    raise ImportError(
@@ -401,7 +406,7 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\]
         \\
         \\
-        \\class PricingEngine:
+        \\class DAGEngine:
         \\    """
         \\    High-performance pricing engine with native backend.
         \\    
@@ -409,7 +414,7 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\    providing zero-overhead graph traversal at runtime.
         \\    
         \\    Example:
-        \\        engine = PricingEngine()
+        \\        engine = DAGEngine()
         \\        result = engine.calculate(
         \\            dynamic_input_num_1=100.0,
         \\            dynamic_input_num_2=200.0
@@ -562,9 +567,9 @@ fn generateEngineFile(allocator: std.mem.Allocator, output_dir: []const u8, lib_
         \\        return list(results_c_array)
         \\    
         \\    def __repr__(self) -> str:
-        \\        return f"PricingEngine(nodes={{self._node_count}}, inputs={{DYNAMIC_INPUT_IDS}})"
+        \\        return f"DAGEngine(nodes={{self._node_count}}, inputs={{DYNAMIC_INPUT_IDS}})"
         \\
-    , .{lib_name});
+    , .{ model_name, lib_name });
 
     const engine_path = try std.fmt.allocPrint(allocator, "{s}/engine.py", .{output_dir});
     defer allocator.free(engine_path);
@@ -603,10 +608,10 @@ fn generateEngineStubFile(allocator: std.mem.Allocator, root: std.json.Value, ou
         \\
         \\from typing import List, Mapping, Sequence, Unpack
         \\
-        \\from ._types import PricingInputs, PricingBatchInputs
+        \\from ._types import DAGInputs, DAGBatchInputs
         \\
         \\
-        \\class PricingEngine:
+        \\class DAGEngine:
         \\    """High-performance pricing engine with native backend."""
         \\    
         \\    def __init__(self) -> None: ...
@@ -665,7 +670,7 @@ fn generateEngineStubFile(allocator: std.mem.Allocator, root: std.json.Value, ou
         \\    
         \\    def calculate_batch(
         \\        self,
-        \\        inputs: PricingBatchInputs,
+        \\        inputs: DAGBatchInputs,
         \\    ) -> List[float]:
         \\        """Calculate prices for a batch of input values."""
         \\        ...

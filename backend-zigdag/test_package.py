@@ -14,7 +14,7 @@ def main():
     print("=" * 60)
 
     # Create engine
-    engine = my_dag_model.PricingEngine()
+    engine = my_dag_model.DAGEngine()
     dynamic_input_ids = engine.dynamic_input_ids
 
     print(f"Found {len(dynamic_input_ids)} dynamic inputs:")

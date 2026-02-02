@@ -1,4 +1,4 @@
-//! OpenPricing - Compile-time pricing engine
+//! OpenDAG - Compile-time pricing engine
 //!
 //! A pricing calculation engine that turns JSON graph definitions into
 //! native machine code at compile time with zero runtime overhead.

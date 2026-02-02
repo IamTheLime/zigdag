@@ -29,7 +29,7 @@ pub fn main() !void {
     std.debug.print("==============================================\n", .{});
     std.debug.print("\n", .{});
 
-    std.debug.print("Pricing Model Information:\n", .{});
+    std.debug.print("DAG Model Information:\n", .{});
     std.debug.print("  - JSON parsed at: COMPILE TIME\n", .{});
     std.debug.print("  - Graph validated at: COMPILE TIME\n", .{});
     std.debug.print("  - Nodes in model: {d}\n", .{PRICING_NODES.len});

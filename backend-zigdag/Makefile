@@ -49,7 +49,7 @@ release:
 
 ## Show this help message
 help:
-	@echo "OpenPricing Makefile Commands:"
+	@echo "OpenDAG Makefile Commands:"
 	@echo ""
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/^## /  /'
 	@echo ""
