@@ -76,7 +76,7 @@ pub fn main() !void {
     try generatePyTypedMarker(package_dir);
 
     // Generate engine.pyi stub file for type hints
-    try generateEngineStubFile(allocator, root, package_dir);
+    try generateEngineStubFile(allocator, model_name, package_dir);
 
     // Output the package directory path for build.zig to use
     std.debug.print("✓ Generated Python package '{s}' v{s} in {s}/\n", .{ model_name, model_version, package_dir });
@@ -589,14 +589,14 @@ fn generatePyTypedMarker(output_dir: []const u8) !void {
     // Empty file - just a marker
 }
 
-fn generateEngineStubFile(allocator: std.mem.Allocator, root: std.json.Value, output_dir: []const u8) !void {
+fn generateEngineStubFile(allocator: std.mem.Allocator, model_name: []const u8, output_dir: []const u8) !void {
     var output = try std.ArrayList(u8).initCapacity(allocator, 4096);
     defer output.deinit(allocator);
 
     const writer = output.writer(allocator);
 
     // Header with imports
-    try writer.writeAll(
+    try writer.print(
         \\"""
         \\Type stubs for ZigDag Engine.
         \\
@@ -608,7 +608,7 @@ fn generateEngineStubFile(allocator: std.mem.Allocator, root: std.json.Value, ou
         \\
         \\from typing import List, Mapping, Sequence, Unpack
         \\
-        \\from ._types import DAGInputs, DAGBatchInputs
+        \\from {s}._types import DAGInputs, DAGBatchInputs
         \\
         \\
         \\class DAGEngine:
@@ -628,37 +628,7 @@ fn generateEngineStubFile(allocator: std.mem.Allocator, root: std.json.Value, ou
         \\    
         \\    def calculate(
         \\        self,
-        \\
-    );
-
-    // Generate typed kwargs using Unpack
-    const nodes = root.object.get("nodes") orelse return error.NoNodesInJson;
-    const nodes_array = nodes.array;
-
-    // Collect dynamic input info for docstring
-    var first = true;
-    for (nodes_array.items) |node_value| {
-        const node = node_value.object;
-        const operation_str = node.get("operation").?.string;
-
-        const id = node.get("id").?.string;
-        if (std.mem.eql(u8, operation_str, "dynamic_input_num")) {
-            if (!first) {
-                try writer.writeAll(",\n");
-            }
-            first = false;
-            try writer.print("        {s}: float", .{id});
-        } else if (std.mem.eql(u8, operation_str, "dynamic_input_str")) {
-            if (!first) {
-                try writer.writeAll(",\n");
-            }
-            first = false;
-            try writer.print("        {s}: str", .{id});
-        }
-    }
-
-    try writer.writeAll(
-        \\,
+        \\        **kwargs: Unpack[DAGInputs],
         \\    ) -> float:
         \\        """
         \\        Calculate the pricing result with the given inputs.
@@ -670,14 +640,14 @@ fn generateEngineStubFile(allocator: std.mem.Allocator, root: std.json.Value, ou
         \\    
         \\    def calculate_batch(
         \\        self,
-        \\        inputs: DAGBatchInputs,
+        \\        **kwargs: Unpack[DAGBatchInputs],
         \\    ) -> List[float]:
         \\        """Calculate prices for a batch of input values."""
         \\        ...
         \\    
         \\    def __repr__(self) -> str: ...
         \\
-    );
+    , .{model_name});
 
     // Write file
     const stub_path = try std.fmt.allocPrint(allocator, "{s}/engine.pyi", .{output_dir});
