@@ -98,10 +98,7 @@ fn sanitizePackageName(name: []const u8, buf: []u8) []const u8 {
     return buf[0..i];
 }
 
-fn generateCalcInterface(writer: anytype, root: std.json.Value, dag_type: enum { batch, transactional }) !void {
-    // Collect dynamic inputs
-    const nodes = root.object.get("nodes") orelse return error.NoNodesInJson;
-    const nodes_array = nodes.array;
+fn generateCalcInterface(writer: anytype, nodes_array: std.json.Array, dag_type: enum { batch, transactional }) !void {
 
     // Pre-compute batch wrappers
     const seq_prefix = if (dag_type == .batch) "Sequence[" else "";
@@ -212,8 +209,42 @@ fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_
         \\
     );
 
-    try generateCalcInterface(&writer, root, .transactional);
-    try generateCalcInterface(&writer, root, .batch);
+
+    // Collect dynamic inputs
+    const nodes = root.object.get("nodes") orelse return error.NoNodesInJson;
+    const nodes_array = nodes.array;
+
+    try generateCalcInterface(&writer, nodes_array, .transactional);
+    try generateCalcInterface(&writer, nodes_array, .batch);
+
+    
+    try writer.writeAll(
+        \\DYNAMIC_INPUT_IDS = [
+        \\
+    );
+    for (nodes_array.items) |node_value| {
+        const node = node_value.object;
+        const operation_str = node.get("operation").?.string;
+
+        if (std.mem.eql(u8, operation_str, "dynamic_input_str")){
+            try writer.print(
+                \\  "{s}",
+                \\
+             , .{node.get("id").?.string}   
+            );
+        }
+        if (std.mem.eql(u8, operation_str, "dynamic_input_num")){
+            try writer.print(
+                \\  "{s}",
+                \\
+             , .{node.get("id").?.string}   
+            );
+        }
+
+    }
+    try writer.writeAll(
+        \\]
+    );
 
     // Write file
     const types_path = try std.fmt.allocPrint(allocator, "{s}/_types.py", .{output_dir});
