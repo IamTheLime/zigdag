@@ -65,6 +65,7 @@ fn build_lib(
 
 fn setup_tests(
     b: *std.Build,
+    target: std.Build.ResolvedTarget,
     bld_helpers: BuildCore,
 ) void {
     // Tests
@@ -74,8 +75,23 @@ fn setup_tests(
 
     const run_lib_tests = b.addRunArtifact(lib_tests);
 
+    // FFI tests (requires generated_nodes)
+    const ffi_test_module = b.createModule(.{
+        .root_source_file = b.path("src/ffi.zig"),
+        .target = target,
+        .imports = &.{
+            .{ .name = "zigdag", .module = bld_helpers.zigdag_root_mod },
+            .{ .name = "generated_nodes", .module = bld_helpers.generated_nodes_mod },
+        },
+    });
+    const ffi_tests = b.addTest(.{
+        .root_module = ffi_test_module,
+    });
+    const run_ffi_tests = b.addRunArtifact(ffi_tests);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_tests.step);
+    test_step.dependOn(&run_ffi_tests.step);
 }
 
 fn setup_benchmark_build(
@@ -120,7 +136,7 @@ pub fn build(b: *std.Build) void {
 
     const bld_core = build_lib(b, target, optimize);
     setup_benchmark_build(b, target, optimize, bld_core);
-    setup_tests(b, bld_core);
+    setup_tests(b, target, bld_core);
 
     // =========================================================================
     // Python Package Generation

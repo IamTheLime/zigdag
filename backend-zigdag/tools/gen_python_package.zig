@@ -244,6 +244,49 @@ fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_
     }
     try writer.writeAll(
         \\]
+        \\
+        \\
+    );
+
+    // Generate NUMERIC_INPUT_IDS
+    try writer.writeAll(
+        \\NUMERIC_INPUT_IDS: List[str] = [
+        \\
+    );
+    for (nodes_array.items) |node_value| {
+        const node = node_value.object;
+        const operation_str = node.get("operation").?.string;
+        if (std.mem.eql(u8, operation_str, "dynamic_input_num")) {
+            try writer.print(
+                \\    "{s}",
+                \\
+            , .{node.get("id").?.string});
+        }
+    }
+    try writer.writeAll(
+        \\]
+        \\
+        \\
+    );
+
+    // Generate STRING_INPUT_IDS
+    try writer.writeAll(
+        \\STRING_INPUT_IDS: List[str] = [
+        \\
+    );
+    for (nodes_array.items) |node_value| {
+        const node = node_value.object;
+        const operation_str = node.get("operation").?.string;
+        if (std.mem.eql(u8, operation_str, "dynamic_input_str")) {
+            try writer.print(
+                \\    "{s}",
+                \\
+            , .{node.get("id").?.string});
+        }
+    }
+    try writer.writeAll(
+        \\]
+        \\
     );
 
     // Write file
@@ -324,9 +367,9 @@ fn generateInitFile(allocator: std.mem.Allocator, output_dir: []const u8) !void 
         \\"""
         \\
         \\from .engine import DAGEngine
-        \\from ._types import DAGInputs, DAGBatchInputs, DYNAMIC_INPUT_IDS
+        \\from ._types import DAGInputs, DAGBatchInputs, DYNAMIC_INPUT_IDS, NUMERIC_INPUT_IDS, STRING_INPUT_IDS
         \\
-        \\__all__ = ["DAGEngine", "DAGInputs", "DAGBatchInputs", "DYNAMIC_INPUT_IDS"]
+        \\__all__ = ["DAGEngine", "DAGInputs", "DAGBatchInputs", "DYNAMIC_INPUT_IDS", "NUMERIC_INPUT_IDS", "STRING_INPUT_IDS"]
         \\
     ;
 
@@ -365,9 +408,9 @@ fn generateEngineFile(
         \\
         \\from ctypes import CDLL, POINTER, byref, c_char_p, c_double, c_int
         \\from pathlib import Path
-        \\from typing import List, Mapping, Sequence
+        \\from typing import List, Sequence
         \\
-        \\from {s}._types import DYNAMIC_INPUT_IDS
+        \\from {s}._types import DAGInputs, DYNAMIC_INPUT_IDS, NUMERIC_INPUT_IDS, STRING_INPUT_IDS
         \\
         \\
         \\# Load the native library from the package directory
@@ -396,7 +439,7 @@ fn generateEngineFile(
         \\
         \\_lib.calculate_final_node_price_batch.restype = c_int
         \\_lib.calculate_final_node_price_batch.argtypes = [
-        \\    POINTER(c_double), c_int, c_int, POINTER(c_double)
+        \\    POINTER(c_double), POINTER(c_char_p), c_int, c_int, c_int, POINTER(c_double)
         \\]
         \\
         \\
@@ -502,63 +545,51 @@ fn generateEngineFile(
         \\    
         \\    def calculate_batch(
         \\        self,
-        \\        inputs: Mapping[str, Sequence[float]]
+        \\        rows: Sequence[DAGInputs],
         \\    ) -> List[float]:
         \\        """
-        \\        Calculate prices for a batch of input values.
-        \\        
+        \\        Calculate prices for a batch of input sets.
+        \\
         \\        This is significantly faster than calling calculate() in a loop.
-        \\        
+        \\
         \\        Args:
-        \\            inputs: Dictionary mapping input node IDs to sequences of values.
-        \\                    All sequences must have the same length.
-        \\                    
+        \\            rows: Sequence of input dictionaries, each matching DAGInputs.
+        \\
         \\        Returns:
         \\            List of calculated prices.
         \\        """
-        \\        input_ids = DYNAMIC_INPUT_IDS
-        \\        
-        \\        # Validate inputs
-        \\        if set(inputs.keys()) != set(input_ids):
-        \\            missing = set(input_ids) - set(inputs.keys())
-        \\            extra = set(inputs.keys()) - set(input_ids)
-        \\            msg = []
-        \\            if missing:
-        \\                msg.append(f"Missing inputs: {{missing}}")
-        \\            if extra:
-        \\                msg.append(f"Unknown inputs: {{extra}}")
-        \\            raise ValueError(". ".join(msg))
-        \\        
-        \\        sequences = [inputs[id_] for id_ in input_ids]
-        \\        batch_size = len(sequences[0])
-        \\        
-        \\        if not all(len(seq) == batch_size for seq in sequences):
-        \\            raise ValueError("All input sequences must have the same length")
-        \\        
-        \\        num_inputs = len(input_ids)
-        \\        
-        \\        # Interleave inputs
-        \\        input_flat: List[float] = []
-        \\        for row_idx in range(batch_size):
-        \\            for seq in sequences:
-        \\                input_flat.append(float(seq[row_idx]))
-        \\        
-        \\        input_c_array = (c_double * len(input_flat))(*input_flat)
-        \\        results_c_array = (c_double * batch_size)()
-        \\        
+        \\        if not rows:
+        \\            return []
+        \\
+        \\        num_rows = len(rows)
+        \\        numeric_flat: List[float] = []
+        \\        string_flat: List[bytes] = []
+        \\
+        \\        for row in rows:
+        \\            for input_id in NUMERIC_INPUT_IDS:
+        \\                numeric_flat.append(float(row[input_id]))
+        \\            for input_id in STRING_INPUT_IDS:
+        \\                string_flat.append(row[input_id].encode("utf-8"))
+        \\
+        \\        numeric_arr = (c_double * len(numeric_flat))(*numeric_flat)
+        \\        string_arr = (c_char_p * len(string_flat))(*string_flat)
+        \\        results_arr = (c_double * num_rows)()
+        \\
         \\        ret = _lib.calculate_final_node_price_batch(
-        \\            input_c_array,
-        \\            c_int(num_inputs),
-        \\            c_int(batch_size),
-        \\            results_c_array
+        \\            numeric_arr,
+        \\            string_arr,
+        \\            c_int(len(NUMERIC_INPUT_IDS)),
+        \\            c_int(len(STRING_INPUT_IDS)),
+        \\            c_int(num_rows),
+        \\            results_arr,
         \\        )
-        \\        
+        \\
         \\        if ret == -1:
-        \\            raise ValueError(f"Input count mismatch")
+        \\            raise ValueError("Input count mismatch with compiled model")
         \\        elif ret != 0:
         \\            raise RuntimeError(f"Batch calculation failed: {{ret}}")
-        \\        
-        \\        return list(results_c_array)
+        \\
+        \\        return list(results_arr)
         \\    
         \\    def __repr__(self) -> str:
         \\        return f"DAGEngine(nodes={{self._node_count}}, inputs={{DYNAMIC_INPUT_IDS}})"
@@ -600,7 +631,7 @@ fn generateEngineStubFile(allocator: std.mem.Allocator, model_name: []const u8, 
         \\
         \\from __future__ import annotations
         \\
-        \\from typing import List, Unpack
+        \\from typing import List, Sequence, Unpack
         \\
         \\from {s}._types import DAGInputs, DAGBatchInputs
         \\
@@ -634,9 +665,9 @@ fn generateEngineStubFile(allocator: std.mem.Allocator, model_name: []const u8, 
         \\    
         \\    def calculate_batch(
         \\        self,
-        \\        **kwargs: Unpack[DAGBatchInputs],
+        \\        rows: Sequence[DAGInputs],
         \\    ) -> List[float]:
-        \\        """Calculate prices for a batch of input values."""
+        \\        """Calculate prices for a batch of input sets."""
         \\        ...
         \\    
         \\    def __repr__(self) -> str: ...

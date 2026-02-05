@@ -1,6 +1,9 @@
 const std = @import("std");
-const zigdag = @import("zigdag");
+
 const generated = @import("generated_nodes");
+const PRICING_NODES = generated.nodes;
+const zigdag = @import("zigdag");
+const DAGNode = zigdag.node.DAGNode;
 
 // ============================================================================
 // FFI LIBRARY - Exposes pricing calculation functions for Python/C/etc
@@ -13,7 +16,6 @@ const generated = @import("generated_nodes");
 // The pricing model is compiled in at build time, so you must rebuild
 // when the model changes.
 
-const PRICING_NODES = generated.nodes;
 const PRICING_EXECUTOR = zigdag.ComptimeExecutorFromNodes(PRICING_NODES);
 
 // Thread-local executor instance
@@ -171,7 +173,7 @@ const INPUT_METADATA = blk: {
         if (node.operation == .dynamic_input_num) {
             meta = meta ++ &[_]InputMeta{
                 InputMeta{
-                    .node_id = node.node_id.ptr,
+                    .node_id = @ptrCast(node.node_id.ptr),
                     .input_type = InputType.numeric,
                     .index = num_idx,
                 },
@@ -180,7 +182,7 @@ const INPUT_METADATA = blk: {
         } else if (node.operation == .dynamic_input_str) {
             meta = meta ++ &[_]InputMeta{
                 InputMeta{
-                    .node_id = node.node_id.ptr,
+                    .node_id = @ptrCast(node.node_id.ptr),
                     .input_type = InputType.string,
                     .index = str_idx,
                 },
@@ -205,76 +207,142 @@ export fn get_input_meta(index: c_int, out_meta: *InputMeta) c_int {
 /// Batch calculate prices for multiple input sets
 /// This is much faster than calling calculate_final_node_price in a Python loop!
 ///
-/// @param input_values: Flat array of input values [row0_input0, row0_input1, ..., row1_input0, row1_input1, ...]
-/// @param num_inputs: Number of dynamic inputs per row
+/// @param numeric_input_values: Flat array of numeric inputs, ordered by PRICING_NODES declaration order
+/// @param string_input_values: Flat array of string inputs (C strings), ordered by PRICING_NODES declaration order
+/// @param num_numeric_inputs: Number of numeric inputs per row (for validation)
+/// @param num_string_inputs: Number of string inputs per row (for validation)
 /// @param num_rows: Number of rows to process
 /// @param results: Output array for results (must have space for num_rows elements)
 /// Returns 0 on success, non-zero on error
-///
-/// Example:
-///   If you have 2 dynamic inputs and want to process 3 rows:
-///   input_values = [100.0, 200.0,  150.0, 250.0,  175.0, 225.0]
-///                   ^row0^         ^row1^         ^row2^
-///   num_inputs = 2, num_rows = 3
 export fn calculate_final_node_price_batch(
-    input_values: [*]const f64,
-    string_values: [*]const [*:0]const u8,
+    numeric_input_values: [*]const f64,
+    string_input_values: [*]const [*:0]const u8,
+    num_numeric_inputs: c_int,
+    num_string_inputs: c_int,
     num_rows: c_int,
     results: [*]f64,
 ) c_int {
-    // Get list of dynamic input node IDs (compile time)
     const dynamic_inputs = comptime blk: {
-        var inputs: []const []const u8 = &.{};
+        var inputs: []const *const DAGNode = &.{};
         for (PRICING_NODES) |node| {
             if (node.operation == .dynamic_input_num or node.operation == .dynamic_input_str) {
-                inputs = inputs ++ &[_][]const u8{node.node_id};
+                inputs = inputs ++ &[_]*const DAGNode{&node};
             }
         }
         break :blk inputs;
     };
 
-    // Validate input count
-    if (num_inputs != dynamic_inputs.len) {
-        return -1; // Input count mismatch
+    const expected_numeric = comptime blk: {
+        var count: c_int = 0;
+        for (PRICING_NODES) |node| {
+            if (node.operation == .dynamic_input_num) count += 1;
+        }
+        break :blk count;
+    };
+
+    const expected_string = comptime blk: {
+        var count: c_int = 0;
+        for (PRICING_NODES) |node| {
+            if (node.operation == .dynamic_input_str) count += 1;
+        }
+        break :blk count;
+    };
+
+    // Validate input counts match compiled model
+    if (num_numeric_inputs != expected_numeric or num_string_inputs != expected_string) {
+        return -1;
     }
 
-    // Create a local executor for batch processing
     var batch_executor = PRICING_EXECUTOR.init();
-
-    // Process each row
-    var row: usize = 0;
-    while (row < @as(usize, @intCast(num_rows))) : (row += 1) {
-        // Set inputs for this row
-        const row_offset = row * @as(usize, @intCast(num_inputs));
-
-        inline for (dynamic_inputs, 0..) |node_id, i| {
-            const value = input_values[row_offset + i];
-            batch_executor.setInputNum(node_id, value) catch return -2;
+    var num_offset: usize = 0;
+    var string_offset: usize = 0;
+    for (0..@as(usize, @intCast(num_rows))) |row| {
+        inline for (dynamic_inputs) |node| {
+            if (node.operation == .dynamic_input_num) {
+                batch_executor.setInputNum(node.node_id, numeric_input_values[num_offset]) catch return -2;
+                num_offset += 1;
+            } else if (node.operation == .dynamic_input_str) {
+                batch_executor.setInputStr(node.node_id, std.mem.span(string_input_values[string_offset])) catch return -2;
+                string_offset += 1;
+            }
         }
-
-        // Calculate result
         results[row] = batch_executor.getOutput() catch return -3;
     }
 
     return 0;
 }
 
-// Note: This library doesn't have a main() function
-// Use the benchmark executable to test the pricing model
-// Example Python usage:
-//
-// from ctypes import CDLL, c_double, c_int, c_char_p, create_string_buffer
-//
-// lib = CDLL("./libzigdag.so")
-//
-// # Initialize
-// lib.pricing_init()
-//
-// # Set inputs
-// lib.pricing_set_input(b"dynamic_input_num_1", c_double(100.0))
-// lib.pricing_set_input(b"dynamic_input_num_2", c_double(200.0))
-//
-// # Calculate
-// result = c_double()
-// lib.calculate_final_node_price(byref(result))
-// print(f"Price: ${result.value:.2f}")
+// ============================================================================
+// Tests
+// ============================================================================
+
+test "single calculation: nome=tiago, discount=10" {
+    // Set inputs via the FFI functions
+    try std.testing.expectEqual(@as(c_int, 0), set_input_node_value_str("nome", "tiago"));
+    try std.testing.expectEqual(@as(c_int, 0), set_input_node_value_num("discount", 10.0));
+
+    var result: f64 = 0.0;
+    try std.testing.expectEqual(@as(c_int, 0), calculate_final_node_price(&result));
+
+    // nome=tiago -> 200, * 100 = 20000, + 30000 = 50000, / 10 = 5000
+    try std.testing.expectApproxEqAbs(@as(f64, 5000.0), result, 0.001);
+}
+
+test "batch calculation: single row" {
+    const numeric_values = [_]f64{10.0}; // discount
+    const string_values = [_][*:0]const u8{"tiago"}; // nome
+    var results = [_]f64{0.0};
+
+    const ret = calculate_final_node_price_batch(
+        &numeric_values,
+        &string_values,
+        1, // num_numeric_inputs
+        1, // num_string_inputs
+        1, // num_rows
+        &results,
+    );
+
+    try std.testing.expectEqual(@as(c_int, 0), ret);
+    try std.testing.expectApproxEqAbs(@as(f64, 5000.0), results[0], 0.001);
+}
+
+test "batch calculation: multiple rows" {
+    // 3 rows: tiago/10, ben/20, test/5
+    const numeric_values = [_]f64{ 10.0, 20.0, 5.0 };
+    const string_values = [_][*:0]const u8{ "tiago", "ben", "test" };
+    var results = [_]f64{ 0.0, 0.0, 0.0 };
+
+    const ret = calculate_final_node_price_batch(
+        &numeric_values,
+        &string_values,
+        1, // num_numeric_inputs
+        1, // num_string_inputs
+        3, // num_rows
+        &results,
+    );
+
+    try std.testing.expectEqual(@as(c_int, 0), ret);
+    // tiago: 200*100+30000=50000, /10=5000
+    try std.testing.expectApproxEqAbs(@as(f64, 5000.0), results[0], 0.001);
+    // ben: 400*100+30000=70000, /20=3500
+    try std.testing.expectApproxEqAbs(@as(f64, 3500.0), results[1], 0.001);
+    // test: 100*100+30000=40000, /5=8000
+    try std.testing.expectApproxEqAbs(@as(f64, 8000.0), results[2], 0.001);
+}
+
+test "batch calculation: validation rejects wrong counts" {
+    const numeric_values = [_]f64{10.0};
+    const string_values = [_][*:0]const u8{"tiago"};
+    var results = [_]f64{0.0};
+
+    // Wrong numeric count
+    const ret = calculate_final_node_price_batch(
+        &numeric_values,
+        &string_values,
+        99, // wrong
+        1,
+        1,
+        &results,
+    );
+    try std.testing.expectEqual(@as(c_int, -1), ret);
+}
