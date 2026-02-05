@@ -146,6 +146,62 @@ export fn get_dynamic_inputs(ids: [*][*]u8, buffer_size: c_int, max_count: c_int
     return count;
 }
 
+/// This struct will guarantee order of arguments for the batch processing
+/// the simplistic approach used to set input values will not work for the
+/// batch processing scenarios without introducing a considerable amount
+/// of bugs into the system
+const InputType = enum(c_int) {
+    numeric = 0,
+    string = 1,
+    // leaving an option here for future types: boolean = 2, date = 3, etc.
+};
+
+const InputMeta = extern struct {
+    node_id: [*:0]const u8,
+    input_type: InputType,
+    index: c_int,
+};
+
+const INPUT_METADATA = blk: {
+    var meta: []const InputMeta = &.{};
+    var num_idx: c_int = 0;
+    var str_idx: c_int = 0;
+
+    for (PRICING_NODES) |node| {
+        if (node.operation == .dynamic_input_num) {
+            meta = meta ++ &[_]InputMeta{
+                InputMeta{
+                    .node_id = node.node_id.ptr,
+                    .input_type = InputType.numeric,
+                    .index = num_idx,
+                },
+            };
+            num_idx += 1;
+        } else if (node.operation == .dynamic_input_str) {
+            meta = meta ++ &[_]InputMeta{
+                InputMeta{
+                    .node_id = node.node_id.ptr,
+                    .input_type = InputType.string,
+                    .index = str_idx,
+                },
+            };
+            str_idx += 1;
+        }
+    }
+
+    break :blk meta;
+};
+
+export fn get_input_count() c_int {
+    return INPUT_METADATA.len;
+}
+
+export fn get_input_meta(index: c_int, out_meta: *InputMeta) c_int {
+    if (index < 0 or index >= INPUT_METADATA.len) return -1;
+    out_meta.* = INPUT_METADATA[@intCast(index)];
+    return 0;
+}
+
 /// Batch calculate prices for multiple input sets
 /// This is much faster than calling calculate_final_node_price in a Python loop!
 ///
@@ -162,7 +218,7 @@ export fn get_dynamic_inputs(ids: [*][*]u8, buffer_size: c_int, max_count: c_int
 ///   num_inputs = 2, num_rows = 3
 export fn calculate_final_node_price_batch(
     input_values: [*]const f64,
-    num_inputs: c_int,
+    string_values: [*]const [*:0]const u8,
     num_rows: c_int,
     results: [*]f64,
 ) c_int {
