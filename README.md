@@ -115,7 +115,7 @@ result = engine.calculate(nome="tiago", discount=100.0)
 
 # Batch — loop runs in native code, not Python
 results = engine.calculate_batch({
-    "nome": ["tiago", "ben", "test"],
+    "nome": ["tiago", "zefaria", "test"],
     "discount": [10.0, 20.0, 5.0],
 })
 ```

@@ -10,7 +10,7 @@
       "allowed_values": [],
       "allowed_str_values": [
         "tiago",
-        "ben",
+        "zefaria",
         "test"
       ],
       "conditional_values": {},
@@ -31,7 +31,7 @@
       "allowed_str_values": [],
       "conditional_values": {
         "tiago": 200,
-        "ben": 400,
+        "zefaria": 400,
         "test": 100
       },
       "inputs": [

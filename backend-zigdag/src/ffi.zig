@@ -309,7 +309,7 @@ test "batch calculation: single row" {
 test "batch calculation: multiple rows" {
     // 3 rows: tiago/10, ben/20, test/5
     const numeric_values = [_]f64{ 10.0, 20.0, 5.0 };
-    const string_values = [_][*:0]const u8{ "tiago", "ben", "test" };
+    const string_values = [_][*:0]const u8{ "tiago", "zefaria", "test" };
     var results = [_]f64{ 0.0, 0.0, 0.0 };
 
     const ret = calculate_final_node_price_batch(
