@@ -1,0 +1,171 @@
+{
+  "name": "my-dag-model",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "nome",
+      "operation": "dynamic_input_str",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "allowed_str_values": [
+        "tiago",
+        "ben",
+        "test"
+      ],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "nome",
+        "description": "User-provided string input at runtime",
+        "position_x": 667.3794178795379,
+        "position_y": 233.50912166059288
+      }
+    },
+    {
+      "id": "nome_mapper",
+      "operation": "conditional_value_input",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "allowed_str_values": [],
+      "conditional_values": {
+        "tiago": 200,
+        "ben": 400,
+        "test": 100
+      },
+      "inputs": [
+        "nome"
+      ],
+      "metadata": {
+        "name": "nome_mapper",
+        "description": "Maps nome to a value",
+        "position_x": 1018.3625068405067,
+        "position_y": 292.5249741880204
+      }
+    },
+    {
+      "id": "constant_input_num_4",
+      "operation": "constant_input_num",
+      "weights": [],
+      "constant_value": 100,
+      "allowed_values": [],
+      "allowed_str_values": [],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "constant_input_num_4",
+        "description": "Hardcoded numeric value",
+        "position_x": 1132.639470472029,
+        "position_y": 822.1347690043829
+      }
+    },
+    {
+      "id": "megamulipliy",
+      "operation": "multiply",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "allowed_str_values": [],
+      "conditional_values": {},
+      "inputs": [
+        "nome_mapper",
+        "constant_input_num_4"
+      ],
+      "metadata": {
+        "name": "megamulipliy",
+        "description": "Multiplication (a × b)",
+        "position_x": 1591.3517842282165,
+        "position_y": 626.148231736648
+      }
+    },
+    {
+      "id": "constant_input_num_6",
+      "operation": "constant_input_num",
+      "weights": [],
+      "constant_value": 30000,
+      "allowed_values": [],
+      "allowed_str_values": [],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "constant_input_num_6",
+        "description": "Base Level",
+        "position_x": 1564.484872262582,
+        "position_y": 1107.7595646887594
+      }
+    },
+    {
+      "id": "add_7",
+      "operation": "add",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "allowed_str_values": [],
+      "conditional_values": {},
+      "inputs": [
+        "megamulipliy",
+        "constant_input_num_6"
+      ],
+      "metadata": {
+        "name": "add_7",
+        "description": "Addition (a + b)",
+        "position_x": 2143.033435298242,
+        "position_y": 841.8740467831503
+      }
+    },
+    {
+      "id": "discount",
+      "operation": "dynamic_input_num",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "allowed_str_values": [],
+      "conditional_values": {},
+      "inputs": [],
+      "metadata": {
+        "name": "discount",
+        "description": "User-provided numeric input at runtime",
+        "position_x": 2115.5908726850475,
+        "position_y": 1555.4857045255244
+      }
+    },
+    {
+      "id": "divide_10",
+      "operation": "divide",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "allowed_str_values": [],
+      "conditional_values": {},
+      "inputs": [
+        "add_7",
+        "discount"
+      ],
+      "metadata": {
+        "name": "divide_10",
+        "description": "Division (a ÷ b)",
+        "position_x": 2820.6302334147595,
+        "position_y": 1204.6642959233313
+      }
+    },
+    {
+      "id": "funnel_11",
+      "operation": "funnel",
+      "weights": [],
+      "constant_value": 0,
+      "allowed_values": [],
+      "allowed_str_values": [],
+      "conditional_values": {},
+      "inputs": [
+        "divide_10"
+      ],
+      "metadata": {
+        "name": "funnel_11",
+        "description": "Marks the final output of the pricing model",
+        "position_x": 3467.8003680665647,
+        "position_y": 1206.0097639787407
+      }
+    }
+  ]
+}

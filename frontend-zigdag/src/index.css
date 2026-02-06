@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Solarized Light inspired theme */
+    --background: 44 87% 94%;        /* base3: soft cream/beige background */
+    --foreground: 192 81% 14%;       /* base02: dark blue-gray text */
+    --card: 44 87% 94%;              /* base3: same as background */
+    --card-foreground: 192 81% 14%;  /* base02: dark text */
+    --popover: 44 87% 94%;           /* base3 */
+    --popover-foreground: 192 81% 14%; /* base02 */
+    --primary: 205 69% 98%;          /* base1: light blue-gray for primary */
+    --primary-foreground: 192 100% 11%; /* blue: Solarized blue */
+    --secondary: 45 100% 85%;        /* base2: light yellow for secondary */
+    --secondary-foreground: 192 81% 14%; /* base02 */
+    --muted: 45 100% 85%;            /* base2: soft yellow for muted areas */
+    --muted-foreground: 194 14% 40%; /* base00: gray for muted text */
+    --accent: 45 100% 71%;           /* base01: darker yellow for accents */
+    --accent-foreground: 192 81% 14%; /* base02 */
+    --destructive: 1 71% 52%;        /* red: Solarized red */
+    --destructive-foreground: 44 87% 94%; /* base3 */
+    --border: 45 100% 71%;           /* base01: darker yellow for borders */
+    --input: 45 100% 85%;            /* base2 */
+    --ring: 192 100% 11%;            /* blue */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    min-height: 100vh;
+  }
+  #root {
+    width: 100%;
+    height: 100vh;
+  }
+}
+
+/* Custom Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ReactFlow custom styling */
+
+/* Enhanced minimap styling */
+.react-flow__minimap {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background-color: hsl(var(--card));
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.react-flow__minimap svg {
+  border-radius: 8px;
+}
+
+/* ReactFlow dark mode fixes */
+.dark .react-flow__minimap {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.dark .react-flow__minimap-mask {
+  fill: hsl(var(--background)) !important;
+  fill-opacity: 0.8 !important;
+}
+
+.dark .react-flow__minimap-node {
+  fill: hsl(var(--primary)) !important;
+  stroke: hsl(var(--border)) !important;
+}
+
+.dark .react-flow__controls {
+  background-color: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+.dark .react-flow__controls-button {
+  background-color: hsl(var(--card)) !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .react-flow__controls-button:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.dark .react-flow__controls-button svg {
+  fill: hsl(var(--foreground)) !important;
+}
