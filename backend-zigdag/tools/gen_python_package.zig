@@ -457,7 +457,9 @@ fn generateEngineFile(
         \\            dynamic_input_num_2=200.0
         \\        )
         \\    """
-        \\    
+        \\
+        \\    _BATCH_CHUNK_SIZE = 1_000_000
+        \\
         \\    def __init__(self) -> None:
         \\        """Initialize the pricing engine."""
         \\        self._node_count = _lib.get_node_count()
@@ -551,6 +553,7 @@ fn generateEngineFile(
         \\        Calculate prices for a batch of input sets.
         \\
         \\        This is significantly faster than calling calculate() in a loop.
+        \\        Large batches are automatically chunked to bound memory usage.
         \\
         \\        Args:
         \\            rows: Sequence of input dictionaries, each matching DAGInputs.
@@ -562,34 +565,43 @@ fn generateEngineFile(
         \\            return []
         \\
         \\        num_rows = len(rows)
-        \\        numeric_flat: List[float] = []
-        \\        string_flat: List[bytes] = []
+        \\        all_results: List[float] = []
         \\
-        \\        for row in rows:
-        \\            for input_id in NUMERIC_INPUT_IDS:
-        \\                numeric_flat.append(float(row[input_id]))
-        \\            for input_id in STRING_INPUT_IDS:
-        \\                string_flat.append(row[input_id].encode("utf-8"))
+        \\        for chunk_start in range(0, num_rows, self._BATCH_CHUNK_SIZE):
+        \\            chunk_end = min(chunk_start + self._BATCH_CHUNK_SIZE, num_rows)
+        \\            chunk = rows[chunk_start:chunk_end]
+        \\            chunk_size = len(chunk)
         \\
-        \\        numeric_arr = (c_double * len(numeric_flat))(*numeric_flat)
-        \\        string_arr = (c_char_p * len(string_flat))(*string_flat)
-        \\        results_arr = (c_double * num_rows)()
+        \\            numeric_flat: List[float] = []
+        \\            string_flat: List[bytes] = []
         \\
-        \\        ret = _lib.calculate_final_node_price_batch(
-        \\            numeric_arr,
-        \\            string_arr,
-        \\            c_int(len(NUMERIC_INPUT_IDS)),
-        \\            c_int(len(STRING_INPUT_IDS)),
-        \\            c_int(num_rows),
-        \\            results_arr,
-        \\        )
+        \\            for row in chunk:
+        \\                for input_id in NUMERIC_INPUT_IDS:
+        \\                    numeric_flat.append(float(row[input_id]))
+        \\                for input_id in STRING_INPUT_IDS:
+        \\                    string_flat.append(row[input_id].encode("utf-8"))
         \\
-        \\        if ret == -1:
-        \\            raise ValueError("Input count mismatch with compiled model")
-        \\        elif ret != 0:
-        \\            raise RuntimeError(f"Batch calculation failed: {{ret}}")
+        \\            numeric_arr = (c_double * len(numeric_flat))(*numeric_flat)
+        \\            string_arr = (c_char_p * len(string_flat))(*string_flat)
+        \\            results_arr = (c_double * chunk_size)()
         \\
-        \\        return list(results_arr)
+        \\            ret = _lib.calculate_final_node_price_batch(
+        \\                numeric_arr,
+        \\                string_arr,
+        \\                c_int(len(NUMERIC_INPUT_IDS)),
+        \\                c_int(len(STRING_INPUT_IDS)),
+        \\                c_int(chunk_size),
+        \\                results_arr,
+        \\            )
+        \\
+        \\            if ret == -1:
+        \\                raise ValueError("Input count mismatch with compiled model")
+        \\            elif ret != 0:
+        \\                raise RuntimeError(f"Batch calculation failed: {{ret}}")
+        \\
+        \\            all_results.extend(results_arr)
+        \\
+        \\        return all_results
         \\    
         \\    def __repr__(self) -> str:
         \\        return f"DAGEngine(nodes={{self._node_count}}, inputs={{DYNAMIC_INPUT_IDS}})"
