@@ -64,7 +64,7 @@ function FlowEditor() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [modelName, setModelName] = useState<string>('my-pricing-model');
+  const [modelName, setModelName] = useState<string>('my-dag');
   const [modelVersion, setModelVersion] = useState<string>('1.0.0');
   const [leftSidebarVisible, setLeftSidebarVisible] = useState(true);
   const [highlightedIslands, setHighlightedIslands] = useState<GraphIsland[]>([]);
@@ -469,7 +469,6 @@ function FlowEditor() {
             size="sm" 
             className="h-8 text-xs" 
             onClick={saveJson}
-            disabled={!jsonOutput}
           >
             <Save className="h-3.5 w-3.5 mr-1.5" />
             Save
