@@ -16,13 +16,11 @@ const std = @import("std");
 ///
 /// The package directory will be created as <output_base_dir>/<package_name>/
 /// where <package_name> comes from the JSON model's "name" field.
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+pub fn main(init: std.process.Init) !void {
+    const allocator = init.gpa;
+    const io = init.io;
 
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
+    const args = try init.minimal.args.toSlice(init.arena.allocator());
 
     if (args.len != 4) {
         std.debug.print("Usage: {s} <input.json> <output_base_dir> <lib_suffix>\n", .{args[0]});
@@ -33,11 +31,10 @@ pub fn main() !void {
     const output_base_dir = args[2];
     const lib_suffix = args[3];
 
-    // Read input JSON file
-    const input_file = try std.fs.cwd().openFile(input_path, .{});
-    defer input_file.close();
+    const cwd = std.Io.Dir.cwd();
 
-    const json_content = try input_file.readToEndAlloc(allocator, 10 * 1024 * 1024);
+    // Read input JSON file
+    const json_content = try cwd.readFileAlloc(io, input_path, allocator, .limited(10 * 1024 * 1024));
     defer allocator.free(json_content);
 
     // Parse JSON
@@ -58,25 +55,25 @@ pub fn main() !void {
     const package_dir = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ output_base_dir, model_name });
     defer allocator.free(package_dir);
 
-    std.fs.cwd().makePath(package_dir) catch {};
+    cwd.createDirPath(io, package_dir) catch {};
 
     // Generate _types.py
-    try generateTypesFile(allocator, root, package_dir);
+    try generateTypesFile(allocator, io, root, package_dir);
 
     // Generate pyproject.toml (in parent directory)
-    try generatePyprojectToml(allocator, model_name, model_version, output_base_dir, package_dir);
+    try generatePyprojectToml(allocator, io, model_name, model_version, output_base_dir, package_dir);
 
     // Generate __init__.py
-    try generateInitFile(allocator, package_dir);
+    try generateInitFile(allocator, io, package_dir);
 
     // Generate engine.py (static content)
-    try generateEngineFile(allocator, model_name, package_dir, lib_suffix);
+    try generateEngineFile(allocator, io, model_name, package_dir, lib_suffix);
 
     // Generate py.typed marker
-    try generatePyTypedMarker(package_dir);
+    try generatePyTypedMarker(io, package_dir);
 
     // Generate engine.pyi stub file for type hints
-    try generateEngineStubFile(allocator, model_name, package_dir);
+    try generateEngineStubFile(allocator, io, model_name, package_dir);
 
     // Output the package directory path for build.zig to use
     std.debug.print("✓ Generated Python package '{s}' v{s} in {s}/\n", .{ model_name, model_version, package_dir });
@@ -187,11 +184,11 @@ fn generateCalcInterface(writer: anytype, nodes_array: std.json.Array, dag_type:
     try writer.writeAll("\n\n");
 }
 
-fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_dir: []const u8) !void {
-    var output = try std.ArrayList(u8).initCapacity(allocator, 4096);
-    defer output.deinit(allocator);
+fn generateTypesFile(allocator: std.mem.Allocator, io: std.Io, root: std.json.Value, output_dir: []const u8) !void {
+    var aw: std.Io.Writer.Allocating = try .initCapacity(allocator, 4096);
+    defer aw.deinit();
 
-    const writer = output.writer(allocator);
+    const writer = &aw.writer;
 
     // Header
     try writer.writeAll(
@@ -214,8 +211,8 @@ fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_
     const nodes = root.object.get("nodes") orelse return error.NoNodesInJson;
     const nodes_array = nodes.array;
 
-    try generateCalcInterface(&writer, nodes_array, .transactional);
-    try generateCalcInterface(&writer, nodes_array, .batch);
+    try generateCalcInterface(writer, nodes_array, .transactional);
+    try generateCalcInterface(writer, nodes_array, .batch);
 
     
     try writer.writeAll(
@@ -293,17 +290,14 @@ fn generateTypesFile(allocator: std.mem.Allocator, root: std.json.Value, output_
     const types_path = try std.fmt.allocPrint(allocator, "{s}/_types.py", .{output_dir});
     defer allocator.free(types_path);
 
-    const output_file = try std.fs.cwd().createFile(types_path, .{});
-    defer output_file.close();
-
-    try output_file.writeAll(output.items);
+    try std.Io.Dir.cwd().writeFile(io, .{ .sub_path = types_path, .data = aw.written() });
 }
 
-fn generatePyprojectToml(allocator: std.mem.Allocator, name: []const u8, version: []const u8, base_dir: []const u8, _: []const u8) !void {
-    var output = try std.ArrayList(u8).initCapacity(allocator, 2048);
-    defer output.deinit(allocator);
+fn generatePyprojectToml(allocator: std.mem.Allocator, io: std.Io, name: []const u8, version: []const u8, base_dir: []const u8, _: []const u8) !void {
+    var aw: std.Io.Writer.Allocating = try .initCapacity(allocator, 2048);
+    defer aw.deinit();
 
-    const writer = output.writer(allocator);
+    const writer = &aw.writer;
 
     try writer.print(
         \\[build-system]
@@ -342,13 +336,10 @@ fn generatePyprojectToml(allocator: std.mem.Allocator, name: []const u8, version
     const toml_path = try std.fmt.allocPrint(allocator, "{s}/pyproject.toml", .{base_dir});
     defer allocator.free(toml_path);
 
-    const output_file = try std.fs.cwd().createFile(toml_path, .{});
-    defer output_file.close();
-
-    try output_file.writeAll(output.items);
+    try std.Io.Dir.cwd().writeFile(io, .{ .sub_path = toml_path, .data = aw.written() });
 }
 
-fn generateInitFile(allocator: std.mem.Allocator, output_dir: []const u8) !void {
+fn generateInitFile(allocator: std.mem.Allocator, io: std.Io, output_dir: []const u8) !void {
     const content =
         \\"""
         \\ZigDag - High-performance pricing engine.
@@ -376,22 +367,20 @@ fn generateInitFile(allocator: std.mem.Allocator, output_dir: []const u8) !void 
     const init_path = try std.fmt.allocPrint(allocator, "{s}/__init__.py", .{output_dir});
     defer allocator.free(init_path);
 
-    const output_file = try std.fs.cwd().createFile(init_path, .{});
-    defer output_file.close();
-
-    try output_file.writeAll(content);
+    try std.Io.Dir.cwd().writeFile(io, .{ .sub_path = init_path, .data = content });
 }
 
 fn generateEngineFile(
     allocator: std.mem.Allocator,
+    io: std.Io,
     model_name: []const u8,
     output_dir: []const u8,
     lib_suffix: []const u8,
 ) !void {
-    var output = try std.ArrayList(u8).initCapacity(allocator, 8192);
-    defer output.deinit(allocator);
+    var aw: std.Io.Writer.Allocating = try .initCapacity(allocator, 8192);
+    defer aw.deinit();
 
-    const writer = output.writer(allocator);
+    const writer = &aw.writer;
 
     // Determine library filename based on suffix
     const lib_name = if (std.mem.eql(u8, lib_suffix, "dylib"))
@@ -611,26 +600,22 @@ fn generateEngineFile(
     const engine_path = try std.fmt.allocPrint(allocator, "{s}/engine.py", .{output_dir});
     defer allocator.free(engine_path);
 
-    const output_file = try std.fs.cwd().createFile(engine_path, .{});
-    defer output_file.close();
-
-    try output_file.writeAll(output.items);
+    try std.Io.Dir.cwd().writeFile(io, .{ .sub_path = engine_path, .data = aw.written() });
 }
 
-fn generatePyTypedMarker(output_dir: []const u8) !void {
+fn generatePyTypedMarker(io: std.Io, output_dir: []const u8) !void {
     var path_buf: [512]u8 = undefined;
     const py_typed_path = try std.fmt.bufPrint(&path_buf, "{s}/py.typed", .{output_dir});
 
-    const output_file = try std.fs.cwd().createFile(py_typed_path, .{});
-    defer output_file.close();
     // Empty file - just a marker
+    try std.Io.Dir.cwd().writeFile(io, .{ .sub_path = py_typed_path, .data = "" });
 }
 
-fn generateEngineStubFile(allocator: std.mem.Allocator, model_name: []const u8, output_dir: []const u8) !void {
-    var output = try std.ArrayList(u8).initCapacity(allocator, 4096);
-    defer output.deinit(allocator);
+fn generateEngineStubFile(allocator: std.mem.Allocator, io: std.Io, model_name: []const u8, output_dir: []const u8) !void {
+    var aw: std.Io.Writer.Allocating = try .initCapacity(allocator, 4096);
+    defer aw.deinit();
 
-    const writer = output.writer(allocator);
+    const writer = &aw.writer;
 
     // Header with imports
     try writer.print(
@@ -690,8 +675,5 @@ fn generateEngineStubFile(allocator: std.mem.Allocator, model_name: []const u8, 
     const stub_path = try std.fmt.allocPrint(allocator, "{s}/engine.pyi", .{output_dir});
     defer allocator.free(stub_path);
 
-    const output_file = try std.fs.cwd().createFile(stub_path, .{});
-    defer output_file.close();
-
-    try output_file.writeAll(output.items);
+    try std.Io.Dir.cwd().writeFile(io, .{ .sub_path = stub_path, .data = aw.written() });
 }

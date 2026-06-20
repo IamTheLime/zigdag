@@ -4,13 +4,11 @@ const std = @import("std");
 /// This allows the entire pricing model to be baked into the binary at compile time!
 ///
 /// Usage: json_to_zig <input.json> <output.zig>
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+pub fn main(init: std.process.Init) !void {
+    const allocator = init.gpa;
+    const io = init.io;
 
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
+    const args = try init.minimal.args.toSlice(init.arena.allocator());
 
     if (args.len != 3) {
         std.debug.print("Usage: {s} <input.json> <output.zig>\n", .{args[0]});
@@ -20,11 +18,10 @@ pub fn main() !void {
     const input_path = args[1];
     const output_path = args[2];
 
-    // Read input JSON file
-    const input_file = try std.fs.cwd().openFile(input_path, .{});
-    defer input_file.close();
+    const cwd = std.Io.Dir.cwd();
 
-    const json_content = try input_file.readToEndAlloc(allocator, 10 * 1024 * 1024); // 10MB max
+    // Read input JSON file (10MB max)
+    const json_content = try cwd.readFileAlloc(io, input_path, allocator, .limited(10 * 1024 * 1024));
     defer allocator.free(json_content);
 
     // Parse JSON
@@ -34,10 +31,10 @@ pub fn main() !void {
     const root = parsed.value;
 
     // Generate Zig code
-    var output = try std.ArrayList(u8).initCapacity(allocator, 1024);
-    defer output.deinit(allocator);
+    var aw: std.Io.Writer.Allocating = try .initCapacity(allocator, 1024);
+    defer aw.deinit();
 
-    const writer = output.writer(allocator);
+    const writer = &aw.writer;
 
     // Write header
     try writer.writeAll(
@@ -112,10 +109,7 @@ pub fn main() !void {
     );
 
     // Write output file
-    const output_file = try std.fs.cwd().createFile(output_path, .{});
-    defer output_file.close();
-
-    try output_file.writeAll(output.items);
+    try cwd.writeFile(io, .{ .sub_path = output_path, .data = aw.written() });
 
     std.debug.print("✓ Generated {d} nodes from {s} -> {s}\n", .{ nodes_array.items.len, input_path, output_path });
 }

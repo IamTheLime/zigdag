@@ -72,12 +72,12 @@ pub fn ComptimeExecutorFromNodes(comptime nodes: []const DAGNode) type {
         fn evaluateNode(self: *Self, comptime node: DAGNode) !node.outputType() {
             @setEvalBranchQuota(10000); // Increase quota for complex conditional lookups
             return switch (node.operation) {
-                .dynamic_input_num => |_| {
+                .dynamic_input_num => {
                     //TODO: use op.defaultValue once this is implemented as a falback
                     const idx = comptime comptime_parser.getNodeIndex(nodes, node.node_id);
                     return self.numeric_node_values[idx];
                 },
-                .dynamic_input_str => |_| {
+                .dynamic_input_str => {
                     const idx = comptime comptime_parser.getNodeIndex(nodes, node.node_id);
                     return self.string_node_values[idx].?;
                 },

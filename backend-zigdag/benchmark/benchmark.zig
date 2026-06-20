@@ -14,10 +14,9 @@ const PRICING_NODES = generated.nodes;
 const PRICING_EXECUTOR = zigdag.ComptimeExecutorFromNodes(PRICING_NODES);
 
 /// Benchmark entry point - demonstrates the compile-time pricing model
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+pub fn main(init: std.process.Init) !void {
+    const allocator = init.gpa;
+    const io = init.io;
 
     // Initialize executor - everything is on the stack!
     var executor = PRICING_EXECUTOR.init();
@@ -105,7 +104,7 @@ pub fn main() !void {
     std.debug.print("Running benchmark (1,000,000 iterations)...\n", .{});
     const iterations: usize = 1_000_000;
 
-    var timer = try std.time.Timer.start();
+    const single_start = std.Io.Clock.awake.now(io);
     var i: usize = 0;
     var total: f64 = 0.0;
 
@@ -114,7 +113,7 @@ pub fn main() !void {
         total += result; // Prevent optimization from removing the calculation
     }
 
-    const elapsed_ns = timer.read();
+    const elapsed_ns: u64 = @intCast(single_start.durationTo(std.Io.Clock.awake.now(io)).toNanoseconds());
     const elapsed_ms = @as(f64, @floatFromInt(elapsed_ns)) / 1_000_000.0;
     const elapsed_s = elapsed_ms / 1000.0;
     const per_iteration_ns = @as(f64, @floatFromInt(elapsed_ns)) / @as(f64, @floatFromInt(iterations));
@@ -157,7 +156,7 @@ pub fn main() !void {
     }
 
     var batch_executor = PRICING_EXECUTOR.init();
-    timer.reset();
+    const batch_start = std.Io.Clock.awake.now(io);
     var batch_idx: usize = 0;
     var batch_total: f64 = 0.0;
 
@@ -190,7 +189,7 @@ pub fn main() !void {
         }
     }
 
-    const batch_elapsed_ns = timer.read();
+    const batch_elapsed_ns: u64 = @intCast(batch_start.durationTo(std.Io.Clock.awake.now(io)).toNanoseconds());
     const batch_elapsed_ms = @as(f64, @floatFromInt(batch_elapsed_ns)) / 1_000_000.0;
     const batch_elapsed_s = batch_elapsed_ms / 1000.0;
     const batch_per_item_ns = @as(f64, @floatFromInt(batch_elapsed_ns)) / @as(f64, @floatFromInt(total_batch_items));

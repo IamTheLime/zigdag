@@ -1,4 +1,7 @@
-.PHONY: run build test check clean watch install help
+.PHONY: run build test check clean watch install help \
+        python-package python-package-all \
+        python-package-linux-x64 python-package-linux-arm64 \
+        python-package-macos-x64 python-package-macos-arm64
 
 # Default target
 .DEFAULT_GOAL := help
@@ -19,9 +22,32 @@ test:
 check:
 	zig build check
 
+## Generate Python package for the current platform
+python-package:
+	zig build python-package
+
+## Generate Python package for Linux x86_64
+python-package-linux-x64:
+	zig build python-package-linux-x64
+
+## Generate Python package for Linux arm64
+python-package-linux-arm64:
+	zig build python-package-linux-arm64
+
+## Generate Python package for macOS x86_64
+python-package-macos-x64:
+	zig build python-package-macos-x64
+
+## Generate Python package for macOS arm64
+python-package-macos-arm64:
+	zig build python-package-macos-arm64
+
+## Generate Python packages for all supported platforms
+python-package-all: python-package-linux-x64 python-package-linux-arm64 python-package-macos-x64 python-package-macos-arm64
+
 ## Clean build artifacts
 clean:
-	rm -rf zig-out zig-cache
+	rm -rf zig-out .zig-cache zig-cache
 
 ## Watch for changes and run continuously (requires entr)
 watch:
